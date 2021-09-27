@@ -37,7 +37,7 @@ size_t gssp_get(Key    item_id,
                 Clock  slack) {
 
     item_metadata * meta_read = meta_lookup[item_id];
-    if(!(meta_read->consumers & (1 << _gssp_rank)) && meta_read->producer != _gssp_rank) {
+    if(!(meta_read->consumers & (UINT64_C(1) << _gssp_rank)) && meta_read->producer != _gssp_rank) {
         gssp_log_fprintf("Trying to read item I am not declared as a consumer nor producer\n"
                          "Arguments - my rank %d, producer %d, consumer bitset %ld\n",
                          _gssp_rank, meta_read->producer, meta_read->consumers);

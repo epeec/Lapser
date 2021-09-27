@@ -36,7 +36,7 @@ class ChecksumTest : public ::testing::Test {
     void SetUp() override {
         Key a = rank;
         Key b = (rank + 1) % num;
-        ASSERT_EQ(0, gssp_init(num, sizeof(char), &a, 1, &b, 1, 0));
+        ASSERT_EQ(0, gssp_init(num, sizeof(Byte), &a, 1, &b, 1, 0));
     }
 
     void TearDown() override {
@@ -46,18 +46,18 @@ class ChecksumTest : public ::testing::Test {
 
 TEST_F(ChecksumTest, SetLocalItem) {
     item * to_test = gssp_get_item_structure(rank);
-    char buf = 'A' + rank;
+    Byte buf = 'A' + rank;
     ASSERT_EQ(0, gssp_set(rank, &buf, sizeof buf, 1));
     EXPECT_EQ(gssp_item_hash((Byte*) &buf, sizeof buf, to_test->version), to_test->checksum);
 }
 
 TEST_F(ChecksumTest, CorrectInitialization) {
     item * to_test = gssp_get_item_structure(rank);
-    EXPECT_EQ(gssp_item_hash(to_test->value, sizeof(char), to_test->version), to_test->checksum);
+    EXPECT_EQ(gssp_item_hash(to_test->value, sizeof(Byte), to_test->version), to_test->checksum);
 }
 
 TEST_F(ChecksumTest, GetLocalItemWithoutSetting) {
-    char buf;
+    Byte buf;
     item * to_test = gssp_get_item_structure(rank);
     ASSERT_EQ(0, gssp_get(rank, &buf, sizeof buf, 1, 1));
     EXPECT_EQ(gssp_item_hash((Byte*) &buf, sizeof buf, to_test->version), to_test->checksum);
@@ -66,8 +66,8 @@ TEST_F(ChecksumTest, GetLocalItemWithoutSetting) {
 // TODO more granular error codes
 TEST_F(ChecksumTest, GetLocalWithCorruptedHash) {
     item * to_test = gssp_get_item_structure(rank);
-    char buf = 'A' + rank;
-    char res;
+    Byte buf = 'A' + rank;
+    Byte res;
 
     ASSERT_EQ(0, gssp_set(rank, &buf, sizeof buf, 1));
     EXPECT_EQ(gssp_item_hash((Byte*) &buf, sizeof buf, to_test->version), to_test->checksum);

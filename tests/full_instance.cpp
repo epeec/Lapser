@@ -14,7 +14,7 @@ class FullGSSPTest : public ::testing::Test {
         Key a = rank;
         Key b[num];
         for(int i=0; i<num; ++i) { b[i] = i; }
-        ASSERT_EQ(0, gssp_init(num, sizeof(char), &a, 1, b, num, 0));
+        ASSERT_EQ(0, gssp_init(num, sizeof(Byte), &a, 1, b, num, 0));
     }
 
     void TearDown() override {
@@ -24,31 +24,31 @@ class FullGSSPTest : public ::testing::Test {
 
 
 TEST_F(FullGSSPTest, SetLocalItem) {
-    char buf = 'A' + rank;
+    Byte buf = 'A' + rank;
     ASSERT_EQ(0, gssp_set(rank, &buf, sizeof buf, 1));
 }
 
 TEST_F(FullGSSPTest, SetNonLocalItem) {
-    char buf = 'A' + rank;
+    Byte buf = 'A' + rank;
     ASSERT_NE(0, gssp_set((rank+1)%num, &buf, sizeof buf, 1));
 }
 
 TEST_F(FullGSSPTest, GetItemWithoutSet) {
-    char res;
+    Byte res;
     ASSERT_NE(0, gssp_get(rank, &res, sizeof res, 1, 0));
 }
 
 TEST_F(FullGSSPTest, SetGetLocalItem) {
-    char buf = 'A' + rank;
-    char res;
+    Byte buf = 'A' + rank;
+    Byte res;
     ASSERT_EQ(0, gssp_set(rank, &buf, sizeof buf, 1));
     ASSERT_EQ(0, gssp_get(rank, &res, sizeof res, 1, 0));
     EXPECT_EQ(buf, res);
 }
 
 TEST_F(FullGSSPTest, SetGetRemoteItems) {
-    char buf = 'A' + rank;
-    char res;
+    Byte buf = 'A' + rank;
+    Byte res;
     ASSERT_EQ(0, gssp_set(rank, &buf, sizeof buf, 1));
 
     for(int rank=0; rank<num; ++rank) {

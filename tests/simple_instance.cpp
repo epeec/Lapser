@@ -13,7 +13,7 @@ class SimpleGSSPTest : public ::testing::Test {
     void SetUp() override {
         Key a = rank;
         Key b = (rank + 1) % num;
-        ASSERT_EQ(0, gssp_init(num, sizeof(char), &a, 1, &b, 1, 0));
+        ASSERT_EQ(0, gssp_init(num, sizeof(Byte), &a, 1, &b, 1, 0));
     }
 
     void TearDown() override {
@@ -23,23 +23,23 @@ class SimpleGSSPTest : public ::testing::Test {
 
 
 TEST_F(SimpleGSSPTest, SetLocalItem) {
-    char buf = 'A' + rank;
+    Byte buf = 'A' + rank;
     ASSERT_EQ(0, gssp_set(rank, &buf, sizeof buf, 1));
 }
 
 TEST_F(SimpleGSSPTest, SetNonLocalItem) {
-    char buf = 'A' + rank;
+    Byte buf = 'A' + rank;
     ASSERT_NE(0, gssp_set((rank+1)%num, &buf, sizeof buf, 1));
 }
 
 TEST_F(SimpleGSSPTest, GetItemWithoutSet) {
-    char res;
+    Byte res;
     ASSERT_NE(0, gssp_get(rank, &res, sizeof res, 1, 0));
 }
 
 TEST_F(SimpleGSSPTest, SetGetLocalItem) {
-    char buf = 'A' + rank;
-    char res;
+    Byte buf = 'A' + rank;
+    Byte res;
     ASSERT_EQ(0, gssp_set(rank, &buf, sizeof buf, 1));
     ASSERT_EQ(0, gssp_get(rank, &res, sizeof res, 1, 0));
     EXPECT_EQ(buf, res);
@@ -47,8 +47,8 @@ TEST_F(SimpleGSSPTest, SetGetLocalItem) {
 
 TEST_F(SimpleGSSPTest, SetGetRemoteItem) {
     gaspi_rank_t right = (rank + 1) % num;
-    char buf = 'A' + rank;
-    char res;
+    Byte buf = 'A' + rank;
+    Byte res;
     ASSERT_EQ(0, gssp_set(rank, &buf, sizeof buf, 1));
 
     ASSERT_EQ(0, gssp_get(right, &res, sizeof res, 1, 0));

@@ -13,7 +13,7 @@ class LeftRightGSSPTest : public ::testing::Test {
   protected:
     Key produce[2];
     Key consume[2];
-    char buf[2];
+    Byte buf[2];
 
     void SetUp() override {
         produce[0] = 2*rank;
@@ -23,7 +23,7 @@ class LeftRightGSSPTest : public ::testing::Test {
         buf[0] = 'A' + rank;
         buf[1] = 'Z' - rank;
 
-        ASSERT_EQ(0, gssp_init(2*num, sizeof(char), produce, 2, consume, 2, 0));
+        ASSERT_EQ(0, gssp_init(2*num, sizeof(Byte), produce, 2, consume, 2, 0));
     }
 
     void TearDown() override {
@@ -42,19 +42,19 @@ TEST_F(LeftRightGSSPTest, SetNonLocalItem) {
 }
 
 TEST_F(LeftRightGSSPTest, GetItemWithoutSet) {
-    char res;
+    Byte res;
     ASSERT_NE(0, gssp_get(produce[1], &res, sizeof res, 1, 0));
 }
 
 TEST_F(LeftRightGSSPTest, SetGetLocalItem) {
-    char res;
+    Byte res;
     ASSERT_EQ(0, gssp_set(produce[1], buf, sizeof *buf, 1));
     ASSERT_EQ(0, gssp_get(produce[1], &res, sizeof res, 1, 0));
     EXPECT_EQ(buf[0], res);
 }
 
 TEST_F(LeftRightGSSPTest, SetGetRemoteItems) {
-    char res[2];
+    Byte res[2];
     ASSERT_EQ(0, gssp_set(produce[0], buf, sizeof *buf, 1));
     ASSERT_EQ(0, gssp_set(produce[1], buf+1, sizeof *buf, 1));
 

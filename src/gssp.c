@@ -272,7 +272,7 @@ int gssp_init(int      total_items,
             uint64_t comparator, desired;
             do {
                 comparator = *prev_value;
-                desired = comparator | 1 << _gssp_rank;
+                desired = comparator | UINT64_C(1) << _gssp_rank;
                 SUCCESS_OR_DIE(
                 gaspi_atomic_compare_swap(GSSP_CONTROL_SEGMENT,
                                           consumer_offset,
@@ -281,7 +281,7 @@ int gssp_init(int      total_items,
                                           GASPI_BLOCK));
             } while(*prev_value != comparator);
 #endif
-            meta[i].consumers |= 1 << _gssp_rank;
+            meta[i].consumers |= UINT64_C(1) << _gssp_rank;
             // This key to consume is already done, go to next item in outer loop
             break;
         }
