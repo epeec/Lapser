@@ -1,0 +1,28 @@
+
+#include <GASPI.h>
+#include <gssp.h>
+#include "success_or_die.h"
+
+// This is just a skeleton app to try out simple things
+// Useful to try and run failing tests
+
+int main() {
+
+    gaspi_rank_t rank, num;
+
+    SUCCESS_OR_DIE( gaspi_proc_init(GASPI_BLOCK) );
+    gaspi_proc_rank(&rank);
+    gaspi_proc_num(&num);
+
+    Key a = rank;
+    Key b = (rank + 1) % num;
+
+    gssp_init(num, sizeof(char), &a, 1, &b, 1, 0);
+
+    gssp_finish();
+
+    SUCCESS_OR_DIE( gaspi_proc_term(GASPI_BLOCK) );
+    return 0;
+}
+
+const char *__asan_default_options() { return "detect_leaks=false:"; }

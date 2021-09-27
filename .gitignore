@@ -1,0 +1,16 @@
+# Project specific
+
+## Machine file
+hosts.txt
+
+## Log output from runs
+gssp-*.out
+
+## Default build directory
+build/
+
+
+# General
+
+## Vim
+.*.swp
