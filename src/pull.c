@@ -44,6 +44,7 @@ size_t gssp_get(Key    item_id,
 
     int retries = 5;
     Hash local_checksum = 0xdeadbeef;
+    gaspi_notification_id_t const item_notify_id = (item_id << 1) | 0x1;
 
 wait_for_incoming:
 
@@ -66,12 +67,12 @@ wait_for_incoming:
             while( (ret = (gaspi_read_notify(GSSP_DATA_SEGMENT, local_item_offset,
                                              meta_read->producer, GSSP_DATA_SEGMENT,
                                              meta_read->offset, item_slot_size,
-                                             ITEM_NOT_OFFSET, GSSP_DATA_QUEUE,
+                                             item_notify_id, GSSP_DATA_QUEUE,
                                              GASPI_BLOCK)) ) == GASPI_QUEUE_FULL) {
                 wait_for_flush_queue(GSSP_DATA_QUEUE);
             }
 
-            wait_or_die(GSSP_DATA_SEGMENT, ITEM_NOT_OFFSET, 1);
+            wait_or_die(GSSP_DATA_SEGMENT, item_notify_id, 1);
         }
     }
 
@@ -87,7 +88,7 @@ wait_for_incoming:
 
     if(local_checksum != to_read->checksum) {
         // FIXME this is probably wrong in this case, I should have the other guy notifying me
-        wait_or_die_limited(GSSP_DATA_SEGMENT, ITEM_NOT_OFFSET, 1, 500 /*miliseconds*/);
+        wait_or_die_limited(GSSP_DATA_SEGMENT, item_notify_id, 1, 500 /*miliseconds*/);
         goto wait_for_incoming;
     }
 

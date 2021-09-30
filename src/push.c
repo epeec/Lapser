@@ -27,6 +27,7 @@ int gssp_set(Key    item_id,
 
     uint64_t *consumers_ptr = meta_write->consumers;
     uint64_t consumers = 0xdeadbeef;
+    gaspi_notification_id_t const item_notify_id = (item_id << 1) | 0x1;
     for(gaspi_rank_t rem_rank=0; rem_rank<_gssp_num; ++rem_rank, consumers >>= 1) {
 
         if(rem_rank % 64 == 0) { consumers = consumers_ptr[rem_rank>>6]; }
@@ -37,7 +38,7 @@ int gssp_set(Key    item_id,
 
         write_notify_and_wait(GSSP_DATA_SEGMENT, loc_off,
                               rem_rank, GSSP_DATA_SEGMENT, rem_off, item_slot_size,
-                              _gssp_rank, ITEM_NOT_OFFSET, GSSP_DATA_QUEUE);
+                              item_notify_id, 1, GSSP_DATA_QUEUE);
 
 
     }
@@ -64,6 +65,7 @@ size_t gssp_get(Key    item_id,
 
     int retries = 5;
     Hash local_checksum = 0xdeadbeef;
+    gaspi_notification_id_t const item_notify_id = (item_id << 1) | 0x1;
 
 wait_for_incoming:
 
@@ -80,8 +82,8 @@ wait_for_incoming:
     // TODO finer control on how we wait, and how much
     if( _gssp_rank != meta_read->producer) {
         while(base_version > time_read + slack) {
-            wait_or_die_limited(GSSP_DATA_SEGMENT, meta_read->producer, ITEM_NOT_OFFSET, 500 /*miliseconds*/);
-	    time_read=to_read->version;
+            wait_or_die_limited(GSSP_DATA_SEGMENT, item_notify_id, 1, 500 /*miliseconds*/);
+            time_read=to_read->version;
         }
     }
 
@@ -100,7 +102,7 @@ wait_for_incoming:
 
     if(local_checksum != before) {
         // Hoping it is an ongoing write
-        int res = wait_or_die_limited(GSSP_DATA_SEGMENT, meta_read->producer, ITEM_NOT_OFFSET, 500 /*miliseconds*/);
+        int res = wait_or_die_limited(GSSP_DATA_SEGMENT, item_notify_id, 1, 500 /*miliseconds*/);
         gssp_log_fprintf("Different checksum in item %"PRIu64", clock %"PRIu64" item clock prev %"PRIu64" now %"PRIu64", "
                          "wait got %ld (before %"PRIx64" now %"PRIx64" calc %"PRIx64")\n",
                         item_id, base_version, time_read, to_read->version, res, before, to_read->checksum, local_checksum);
