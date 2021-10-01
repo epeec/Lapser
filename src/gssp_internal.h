@@ -12,16 +12,16 @@
 #define GSSP_DATA_SEGMENT 1
 #define GSSP_DATA_QUEUE 1
 
+// TODO check limit at gssp_init
+#define GSSP_MAX_NPROCS 1024
 
-// TODO expand above 64 processes
 typedef struct {
     Key             item_id;
     gaspi_rank_t    producer;
-    //Byte            consumers[128/8];
-    uint64_t        consumers;
     gaspi_offset_t  offset;
 #if defined(PUSH_COMM)
-    gaspi_offset_t  consumers_offset[64];
+    uint64_t        consumers[GSSP_MAX_NPROCS >> 6];
+    gaspi_offset_t  consumers_offset[GSSP_MAX_NPROCS];
 #endif
 } item_metadata;
 

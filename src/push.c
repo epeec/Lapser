@@ -24,15 +24,21 @@ int gssp_set(Key    item_id,
     to_write->checksum = gssp_item_hash(new_value, value_size, version);
     memcpy(to_write->value, new_value, value_size);
 
-    uint64_t consumers = meta_write->consumers;
+
+    uint64_t *consumers_ptr = meta_write->consumers;
+    uint64_t consumers = 0xdeadbeef;
     for(gaspi_rank_t rem_rank=0; consumers && rem_rank<_gssp_num; ++rem_rank, consumers >>= 1) {
+
+        if(rem_rank % 64 == 0) { consumers = consumers_ptr[rem_rank>>6]; }
         if( !(consumers & 0x1) ) { continue; }
+
         gaspi_offset_t const rem_off = meta_write->consumers_offset[rem_rank];
         gaspi_offset_t const loc_off = meta_write->offset;
 
         write_notify_and_wait(GSSP_DATA_SEGMENT, loc_off,
                               rem_rank, GSSP_DATA_SEGMENT, rem_off, item_slot_size,
                               _gssp_rank, ITEM_NOT_OFFSET, GSSP_DATA_QUEUE);
+
 
     }
 
@@ -47,10 +53,10 @@ size_t gssp_get(Key    item_id,
 
 
     item_metadata * meta_read = meta_lookup[item_id];
-    if( !(meta_read->consumers & (UINT64_C(1) << _gssp_rank))
+    if( !(meta_read->consumers[_gssp_rank>>6] & (UINT64_C(1) << (_gssp_rank%64)))
        && meta_read->producer != _gssp_rank) {
         gssp_log_fprintf("Trying to read item %"PRIu64", when I am not producer (which is %d) nor consumer (bitset: %"PRIu64")\n",
-                         item_id, meta_read->producer, meta_read->consumers);
+                         item_id, meta_read->producer, meta_read->consumers[_gssp_rank>>6]);
         return -1;
     }
 

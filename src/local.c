@@ -31,13 +31,6 @@ size_t gssp_get(Key    item_id,
                 Clock  base_version,
                 Clock  slack) {
 
-    item_metadata * meta_read = meta_lookup[item_id];
-    if( !( meta_read->consumers & (UINT64_C(1) << _gssp_rank)) && meta_read->producer != _gssp_rank) {
-        gssp_log_fprintf("Trying to read item %"PRIu64", when I am not producer (which is %d) nor consumer (relevant bitset: %"PRIu64")\n",
-                         item_id, meta_read->producer, meta_read->consumers);
-        return -1;
-    }
-
     item * to_read = lookup[item_id];
 
     if(base_version > to_read->version + slack) {

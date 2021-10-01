@@ -245,15 +245,18 @@ int gssp_init(int      total_items,
         wait_or_die(GSSP_CONTROL_SEGMENT, remote_rank, PRODUCE_WRITTEN);
     }
 
+#if defined(PUSH_COMM)
     // 4) registering interest
     gssp_log_fprintf("Start signaling consumers\n");
+    size_t const cons_index = _gssp_rank >> 6;
+    size_t const cons_off = _gssp_rank % 64;
     for(int i=0; i<total_items; ++i) {
+
         Key *k = bsearch(&meta[i].item_id, keys_to_consume, num_keys_to_consume,
                          sizeof(Key), compare_keys);
         if(k == NULL) {
             continue;
         }
-#if defined(PUSH_COMM)
         // try to register right away
         // well, where am *I* storing this...
         size_t j = k - keys_to_consume;
@@ -271,12 +274,12 @@ int gssp_init(int      total_items,
 
         // TODO maybe use an atomic (fetch) add? I don't care about other's bits,
         //      and if there are no bugs/no retrying to register, + <=> |
-        gaspi_offset_t consumer_offset=(Byte*)&meta[i].consumers-(Byte*)base_seg;
-        uint64_t *prev_value = &meta[i].consumers;
+        gaspi_offset_t consumer_offset=(Byte*)&meta[i].consumers[cons_index] -(Byte*)base_seg;
+        uint64_t *prev_value = &meta[i].consumers[cons_index];
         uint64_t comparator, desired;
         do {
             comparator = *prev_value;
-            desired = comparator | UINT64_C(1) << _gssp_rank;
+            desired = comparator | UINT64_C(1) << (cons_off);
             SUCCESS_OR_DIE(
             gaspi_atomic_compare_swap(GSSP_CONTROL_SEGMENT,
                                       consumer_offset,
@@ -284,13 +287,14 @@ int gssp_init(int      total_items,
                                       comparator, desired, prev_value,
                                       GASPI_BLOCK));
         } while(*prev_value != comparator);
-#endif
-        meta[i].consumers |= UINT64_C(1) << _gssp_rank;
+        meta[i].consumers[cons_index] |= UINT64_C(1) << cons_off;
     }
     gssp_log_fprintf("End signaling consumers\n");
+#endif
 
 
     // Y)
+    gssp_log_fprintf("Start allocating data segment & auxiliary data structures\n");
     gaspi_size_t const data_segment_size = (num_keys_to_produce + num_keys_to_consume) * item_slot_size;
     SUCCESS_OR_DIE(
     gaspi_segment_create(GSSP_DATA_SEGMENT, data_segment_size,
@@ -347,6 +351,7 @@ int gssp_init(int      total_items,
 
     free(keys_to_produce);
     free(keys_to_consume);
+    gssp_log_fprintf("Finished initialization\n");
     return 0;
 }
 
