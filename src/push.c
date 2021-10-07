@@ -27,7 +27,7 @@ int gssp_set(Key    item_id,
 
     uint64_t *consumers_ptr = meta_write->consumers;
     uint64_t consumers = 0xdeadbeef;
-    for(gaspi_rank_t rem_rank=0; consumers && rem_rank<_gssp_num; ++rem_rank, consumers >>= 1) {
+    for(gaspi_rank_t rem_rank=0; rem_rank<_gssp_num; ++rem_rank, consumers >>= 1) {
 
         if(rem_rank % 64 == 0) { consumers = consumers_ptr[rem_rank>>6]; }
         if( !(consumers & 0x1) ) { continue; }
