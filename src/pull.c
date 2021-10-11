@@ -1,10 +1,10 @@
 #include "gssp_internal.h"
-
-#include <string.h>
 #include "aux/success_or_die.h"
 #include "aux/waitsome.h"
 #include "aux/queue.h"
 
+#include <string.h>
+#include <inttypes.h>
 
 int gssp_set(Key    item_id,
              void * new_value,
@@ -15,9 +15,8 @@ int gssp_set(Key    item_id,
     // because the produced slots are contiguous and at the beginning
     item_metadata * meta_write = meta_lookup[item_id];
     if(meta_write->producer != _gssp_rank) {
-        gssp_log_fprintf("Trying to set item I am not the producer off\n"
-                         "Arguments - producer %d, my rank %d\n",
-                         meta_write->producer, _gssp_rank);
+        gssp_log_fprintf("Trying to set item %"PRIu64", when the producer rank is %d\n",
+                         item_id, meta_write->producer);
         return -1;
     }
 
@@ -38,9 +37,8 @@ size_t gssp_get(Key    item_id,
 
     item_metadata * meta_read = meta_lookup[item_id];
     if(!(meta_read->consumers & (UINT64_C(1) << _gssp_rank)) && meta_read->producer != _gssp_rank) {
-        gssp_log_fprintf("Trying to read item I am not declared as a consumer nor producer\n"
-                         "Arguments - my rank %d, producer %d, consumer bitset %ld\n",
-                         _gssp_rank, meta_read->producer, meta_read->consumers);
+        gssp_log_fprintf("Trying to read item %"PRIu64", when I am not producer (which is %d) nor consumer (relevant bitset: %"PRIu64")\n",
+                         item_id, meta_read->producer, meta_read->consumers);
         return -1;
     }
 
@@ -57,8 +55,8 @@ wait_for_incoming:
     retries -= 1;
     if(retries <= 0) {
         gssp_log_fprintf("Too many retries due to failing checksums for the get request "
-                         "with args: item=%ld, clock=%ld, slack=%ld\n"
-                         "Stored hash: %lx ; Local hash %lx\n",
+                         "with args: item=%"PRIu64", clock=%"PRIu64", slack=%"PRIu64"; "
+                         "stored hash: %"PRIx64"; local hash %"PRIx64"\n",
                          item_id, base_version, slack, to_read->checksum, local_checksum);
         return -1;
     }
@@ -83,9 +81,9 @@ wait_for_incoming:
     }
 
     if(base_version > to_read->version + slack) {
-        gssp_log_fprintf("Stored clock version on item %ld is too old for the get request\n"
-                         "Arguments - base_version %ld, slack %ld, stored version %ld\n",
-                          item_id, base_version, slack, to_read->version);
+        gssp_log_fprintf("Stored clock version on item %"PRIu64" is too old for the get request "
+                         "with args: base_version %"PRIu64", slack %"PRIu64", stored version %"PRIu64"\n",
+                         item_id, base_version, slack, to_read->version);
         return -1;
     }
 
