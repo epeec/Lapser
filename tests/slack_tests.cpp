@@ -12,7 +12,7 @@ class SlackGSSPTest : public ::testing::TestWithParam<Clock> {
   protected:
     void SetUp() override {
         Key a[] = { rank };
-        Key b[num-1];
+        Key b[num];
         int i = 0, j=0;
         for(int i=0; i<num; ++i) { if(i != rank) { b[j++] = i;}  }
         ASSERT_EQ(num-1, j);

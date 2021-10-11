@@ -6,7 +6,7 @@
 // TODO: instead of starting with 0, start with highest possible segment/queue
 //        (to not clobber lower numbers,
 //         for apps already using gaspi for something else)
-#define GSSP_CONTROL_RANK 1
+#define GSSP_CONTROL_RANK 0
 #define GSSP_CONTROL_SEGMENT 0
 #define GSSP_CONTROL_QUEUE 0
 #define GSSP_DATA_SEGMENT 1
