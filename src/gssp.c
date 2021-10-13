@@ -248,43 +248,44 @@ int gssp_init(int      total_items,
     // 4) registering interest
     gssp_log_fprintf("Start signaling consumers\n");
     for(int i=0; i<total_items; ++i) {
-        for(size_t j=0; j<num_keys_to_consume; ++j) {
-            if(meta[i].item_id != keys_to_consume[j]) { continue ; }
-#if defined(PUSH_COMM)
-            // try to register right away
-            // well, where am *I* storing this...
-            meta[i].offset = (num_keys_to_produce + j)*item_slot_size;
-
-            gaspi_offset_t c_loc_offset =
-                (Byte*)&meta[i].offset-(Byte*)base_seg;
-
-            gaspi_offset_t c_rem_offset =
-                (Byte*)&meta[i].consumers_offset[_gssp_rank]-(Byte*)base_seg;
-
-            write_and_wait(GSSP_CONTROL_SEGMENT, c_loc_offset,
-                           meta[i].producer, GSSP_CONTROL_SEGMENT, c_rem_offset,
-                           sizeof(gaspi_offset_t), GSSP_CONTROL_QUEUE);
-
-            // TODO maybe use an atomic (fetch) add? I don't care about other's bits,
-            //      and if there are no bugs/no retrying to register, + <=> |
-            gaspi_offset_t consumer_offset=(Byte*)&meta[i].consumers-(Byte*)base_seg;
-            uint64_t *prev_value = &meta[i].consumers;
-            uint64_t comparator, desired;
-            do {
-                comparator = *prev_value;
-                desired = comparator | UINT64_C(1) << _gssp_rank;
-                SUCCESS_OR_DIE(
-                gaspi_atomic_compare_swap(GSSP_CONTROL_SEGMENT,
-                                          consumer_offset,
-                                          meta[i].producer,
-                                          comparator, desired, prev_value,
-                                          GASPI_BLOCK));
-            } while(*prev_value != comparator);
-#endif
-            meta[i].consumers |= UINT64_C(1) << _gssp_rank;
-            // This key to consume is already done, go to next item in outer loop
-            break;
+        Key *k = bsearch(&meta[i].item_id, keys_to_consume, num_keys_to_consume,
+                         sizeof(Key), compare_keys);
+        if(k == NULL) {
+            continue;
         }
+#if defined(PUSH_COMM)
+        // try to register right away
+        // well, where am *I* storing this...
+        size_t j = k - keys_to_consume;
+        meta[i].offset = (num_keys_to_produce + j)*item_slot_size;
+
+        gaspi_offset_t c_loc_offset =
+            (Byte*)&meta[i].offset-(Byte*)base_seg;
+
+        gaspi_offset_t c_rem_offset =
+            (Byte*)&meta[i].consumers_offset[_gssp_rank]-(Byte*)base_seg;
+
+        write_and_wait(GSSP_CONTROL_SEGMENT, c_loc_offset,
+                       meta[i].producer, GSSP_CONTROL_SEGMENT, c_rem_offset,
+                       sizeof(gaspi_offset_t), GSSP_CONTROL_QUEUE);
+
+        // TODO maybe use an atomic (fetch) add? I don't care about other's bits,
+        //      and if there are no bugs/no retrying to register, + <=> |
+        gaspi_offset_t consumer_offset=(Byte*)&meta[i].consumers-(Byte*)base_seg;
+        uint64_t *prev_value = &meta[i].consumers;
+        uint64_t comparator, desired;
+        do {
+            comparator = *prev_value;
+            desired = comparator | UINT64_C(1) << _gssp_rank;
+            SUCCESS_OR_DIE(
+            gaspi_atomic_compare_swap(GSSP_CONTROL_SEGMENT,
+                                      consumer_offset,
+                                      meta[i].producer,
+                                      comparator, desired, prev_value,
+                                      GASPI_BLOCK));
+        } while(*prev_value != comparator);
+#endif
+        meta[i].consumers |= UINT64_C(1) << _gssp_rank;
     }
     gssp_log_fprintf("End signaling consumers\n");
 

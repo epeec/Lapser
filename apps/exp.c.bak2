@@ -1,0 +1,42 @@
+
+#include <GASPI.h>
+#include <gssp.h>
+#include "success_or_die.h"
+#include <stdlib.h>
+
+// To test time for large gssp_init
+
+int main() {
+
+    gaspi_rank_t rank, num;
+
+    SUCCESS_OR_DIE( gaspi_proc_init(GASPI_BLOCK) );
+    gaspi_proc_rank(&rank);
+    gaspi_proc_num(&num);
+    srandom(rank+num);
+
+
+    size_t number_of_keys=num*100000;
+    Key to_produce[number_of_keys/num];
+    Key to_consume[number_of_keys/num];
+    for(size_t i=0; i<number_of_keys/num; ++i){
+        to_consume[i] = random() % number_of_keys;
+    }
+    for(size_t i=0; i<number_of_keys/num; ++i) {
+        to_produce[i] = i + (number_of_keys/num)*rank;
+    }
+
+    Key a = rank;
+    Key b = (rank + 1) % num;
+
+    gssp_init(number_of_keys, sizeof(char),
+              to_produce, sizeof to_produce/sizeof to_produce[0],
+              to_consume, sizeof to_consume/sizeof to_consume[0], 0);
+
+    gssp_finish();
+
+    SUCCESS_OR_DIE( gaspi_proc_term(GASPI_BLOCK) );
+    return 0;
+}
+
+const char *__asan_default_options() { return "detect_leaks=false:"; }
