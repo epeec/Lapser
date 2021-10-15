@@ -20,9 +20,9 @@ int gssp_set(Key    item_id,
 
     item * to_write = lookup[item_id];
 
-    to_write->version = version;
-    to_write->checksum = gssp_item_hash(new_value, value_size, version);
     memcpy(to_write->value, new_value, value_size);
+    to_write->checksum = gssp_item_hash(new_value, value_size, version);
+    to_write->version = version;
 
 
     uint64_t *consumers_ptr = meta_write->consumers;
@@ -65,6 +65,7 @@ size_t gssp_get(Key    item_id,
 
     int retries = 5;
     Hash local_checksum = 0xdeadbeef;
+    Clock time_read = -1;
     gaspi_notification_id_t const item_notify_id = (item_id << 1) | 0x1;
 
 wait_for_incoming:
@@ -73,17 +74,17 @@ wait_for_incoming:
     if(retries <= 0) {
         gssp_log_fprintf("Too many retries due to failing checksums for the get request "
                          "with args: item=%"PRIu64", clock=%"PRIu64", slack=%"PRIu64"; "
-                         "stored hash: %"PRIx64"; local hash %"PRIx64"\n",
-                         item_id, base_version, slack, to_read->checksum, local_checksum);
+                         "stored hash: %"PRIx64"; local hash %"PRIx64"; stored clock %"PRIu64"; last read clock %"PRIu64"\n",
+                         item_id, base_version, slack, to_read->checksum, local_checksum, to_read->version, time_read);
         return -1;
     }
 
-    Clock time_read = to_read->version;
+    time_read = to_read->version;
     // TODO finer control on how we wait, and how much
     if( _gssp_rank != meta_read->producer) {
         while(base_version > time_read + slack) {
             wait_or_die_limited(GSSP_DATA_SEGMENT, item_notify_id, 1, 500 /*miliseconds*/);
-            time_read=to_read->version;
+            time_read = to_read->version;
         }
     }
 

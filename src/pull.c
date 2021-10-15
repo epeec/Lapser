@@ -22,9 +22,10 @@ int gssp_set(Key    item_id,
 
     item * to_write = lookup[item_id];
 
-    to_write->version = version;
-    to_write->checksum = gssp_item_hash(new_value, value_size, version);
     memcpy(to_write->value, new_value, value_size);
+    to_write->checksum = gssp_item_hash(new_value, value_size, version);
+    to_write->version = version;
+
     return 0;
 }
 
@@ -44,7 +45,10 @@ size_t gssp_get(Key    item_id,
 
     int retries = 5;
     Hash local_checksum = 0xdeadbeef;
+    Hash before = 0xdeadbeef;
+    Clock time_read = -1;
     gaspi_notification_id_t const item_notify_id = (item_id << 1) | 0x1;
+    gaspi_offset_t const local_item_offset = (Byte*) to_read - base_item_pointer;
 
 wait_for_incoming:
 
@@ -52,17 +56,18 @@ wait_for_incoming:
     if(retries <= 0) {
         gssp_log_fprintf("Too many retries due to failing checksums for the get request "
                          "with args: item=%"PRIu64", clock=%"PRIu64", slack=%"PRIu64"; "
-                         "stored hash: %"PRIx64"; local hash %"PRIx64"\n",
-                         item_id, base_version, slack, to_read->checksum, local_checksum);
+                         "stored hash: %"PRIx64"; local hash %"PRIx64"; stored clock %"PRIu64"; last read clock %"PRIu64"\n",
+                         item_id, base_version, slack, to_read->checksum, local_checksum, to_read->version, time_read);
         return -1;
     }
 
+    time_read = to_read->version;
+    before = to_read->checksum;
     // TODO to think what about getting notifications about the status of the thing
     //      (like "last clock produced in any item")?
     if(meta_read->producer != _gssp_rank) {
-        gaspi_offset_t const local_item_offset = (Byte*) to_read - base_item_pointer;
-        while(base_version > to_read->version + slack) {
-
+        while(base_version > time_read + slack || \
+              before != gssp_item_hash(to_read->value, buf_size, time_read)) {
             gaspi_return_t ret;
             while( (ret = (gaspi_read_notify(GSSP_DATA_SEGMENT, local_item_offset,
                                              meta_read->producer, GSSP_DATA_SEGMENT,
@@ -73,10 +78,12 @@ wait_for_incoming:
             }
 
             wait_or_die(GSSP_DATA_SEGMENT, item_notify_id, 1);
+            time_read = to_read->version;
+            before = to_read->checksum;
         }
     }
 
-    if(base_version > to_read->version + slack) {
+    if(base_version > time_read + slack) {
         gssp_log_fprintf("Stored clock version on item %"PRIu64" is too old for the get request "
                          "with args: base_version %"PRIu64", slack %"PRIu64", stored version %"PRIu64"\n",
                          item_id, base_version, slack, to_read->version);
@@ -84,11 +91,14 @@ wait_for_incoming:
     }
 
     memcpy(recv_buf, to_read->value, buf_size);
-    local_checksum = gssp_item_hash(recv_buf, buf_size, to_read->version);
+    local_checksum = gssp_item_hash(recv_buf, buf_size, time_read);
 
     if(local_checksum != to_read->checksum) {
         // FIXME this is probably wrong in this case, I should have the other guy notifying me
-        wait_or_die_limited(GSSP_DATA_SEGMENT, item_notify_id, 1, 500 /*miliseconds*/);
+        int res = wait_or_die_limited(GSSP_DATA_SEGMENT, item_notify_id, 1, 500 /*miliseconds*/);
+        gssp_log_fprintf("Different checksum in item %"PRIu64", clock %"PRIu64" item clock prev %"PRIu64" now %"PRIu64", "
+                         "wait got %ld (before %"PRIx64" now %"PRIx64" calc %"PRIx64")\n",
+                        item_id, base_version, time_read, to_read->version, res, before, to_read->checksum, local_checksum);
         goto wait_for_incoming;
     }
 
