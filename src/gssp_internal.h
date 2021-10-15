@@ -13,7 +13,7 @@
 #define GSSP_DATA_QUEUE 1
 
 // TODO check limit at gssp_init
-#define GSSP_MAX_NPROCS 1024
+#define GSSP_MAX_NPROCS 256
 
 typedef struct {
     Key             item_id;
