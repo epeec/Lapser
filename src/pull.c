@@ -77,7 +77,7 @@ wait_for_incoming:
                 wait_for_flush_queue(LAPSER_DATA_QUEUE);
             }
 
-            wait_or_die(LAPSER_DATA_SEGMENT, item_notify_id, 1);
+            wait_or_die_limited(LAPSER_DATA_SEGMENT, item_notify_id, 1, 500 /* miliseconds */);
             time_read = to_read->version;
             before = to_read->checksum;
         }
