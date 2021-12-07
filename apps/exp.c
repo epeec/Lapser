@@ -1,6 +1,6 @@
 #include <string.h>
 #include <GASPI.h>
-#include <gssp.h>
+#include <lapser.h>
 #include "success_or_die.h"
 #include "assert.h"
 
@@ -30,16 +30,16 @@ int main() {
     ASSERT(sizeof input == sizeof output[0]);
 
 
-    gssp_init(num, sizeof input, a, 1, b, num, SLACK);
+    lapser_init(num, sizeof input, a, 1, b, num, SLACK);
 
 
     for(int i=1; i < NUM_ITER+1; ++i) {
         input[rank] = i;
-        gssp_set(rank, input, sizeof input, i);
+        lapser_set(rank, input, sizeof input, i);
 
         for(int j=0; j < num; ++j) {
-            int res = gssp_get(j, output[j], sizeof output[j], i, SLACK);
-            if(res != 0) printf("%d: gssp_get failed with %d in iteration %d for item %d\n", rank, res, i, j);
+            int res = lapser_get(j, output[j], sizeof output[j], i, SLACK);
+            if(res != 0) printf("%d: lapser_get failed with %d in iteration %d for item %d\n", rank, res, i, j);
             input[j] = output[j][j];
             if(output[j][j] < i - SLACK) {
                 printf("%d: Error, too old from %d: %d %d\n%1$d: Iteration: %d, Slack: %d, Full values:\n", rank, j, i-SLACK, output[j][j], i, SLACK);
@@ -54,7 +54,7 @@ int main() {
     }
 
 
-    gssp_finish();
+    lapser_finish();
 
     SUCCESS_OR_DIE( gaspi_proc_term(GASPI_BLOCK) );
     return 0;

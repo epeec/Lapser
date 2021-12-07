@@ -4,31 +4,31 @@ add_compile_options(-Wall -Wextra -pedantic)
 add_subdirectory(aux)
 
 # Deal with the top-level options
-if(GSSP_COMM MATCHES ^LOCAL)
+if(LAPSER_COMM MATCHES ^LOCAL)
     set(impl-files "${CMAKE_CURRENT_SOURCE_DIR}/local.c")
 endif()
 
-if(GSSP_COMM MATCHES ^PULL)
+if(LAPSER_COMM MATCHES ^PULL)
     set(impl-files "${CMAKE_CURRENT_SOURCE_DIR}/pull.c")
 endif()
 
-if(GSSP_COMM MATCHES ^PUSH)
+if(LAPSER_COMM MATCHES ^PUSH)
     set(impl-files "${CMAKE_CURRENT_SOURCE_DIR}/push.c")
 endif()
-add_definitions(-D${GSSP_COMM})
-message(STATUS "Communication method: ${GSSP_COMM}")
+add_definitions(-D${LAPSER_COMM})
+message(STATUS "Communication method: ${LAPSER_COMM}")
 
 
-add_library(gssp gssp.c $<TARGET_OBJECTS:gaspi_aux_functions> ${impl-files})
+add_library(lapser lapser.c $<TARGET_OBJECTS:gaspi_aux_functions> ${impl-files})
 
-target_include_directories(gssp PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+target_include_directories(lapser PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
                                        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-target_compile_features(gssp PRIVATE c_std_99)
+target_compile_features(lapser PRIVATE c_std_99)
 
 # If I am building a shared library, it needs to be -fPIC
-set_target_properties(gssp PROPERTIES POSITION_INDEPENDENT_CODE ${BUILD_SHARED_LIBS})
+set_target_properties(lapser PROPERTIES POSITION_INDEPENDENT_CODE ${BUILD_SHARED_LIBS})
 
 
 # TODO verify that the EXPORT stuff is correctly done
-install(TARGETS gssp DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT gsspconfig)
-install(EXPORT gsspconfig FILE gsspconfig.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/gssp)
+install(TARGETS lapser DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT lapserconfig)
+install(EXPORT lapserconfig FILE lapserconfig.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/lapser)

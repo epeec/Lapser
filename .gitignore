@@ -4,7 +4,7 @@
 hosts.txt
 
 ## Log output from runs
-gssp-*.out
+lapser-*.out
 
 ## Default build directory
 build/

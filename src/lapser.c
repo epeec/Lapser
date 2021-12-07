@@ -1,4 +1,4 @@
-#include "gssp_internal.h"
+#include "lapser_internal.h"
 
 #include <time.h>
 #include <unistd.h>
@@ -12,12 +12,12 @@
 #include "aux/waitsome.h"
 
 // Memory location for these variables.
-// For documentation, see gssp_internal.h
+// For documentation, see lapser_internal.h
 item** lookup;
 item_metadata** meta_lookup;
 gaspi_offset_t* consumers_offsets;
 size_t item_slot_size;
-gaspi_rank_t _gssp_rank, _gssp_num;
+gaspi_rank_t _lapser_rank, _lapser_num;
 
 
 // DJB hash, adapted from http://www.cse.yorku.ca/~oz/hash.html
@@ -33,7 +33,7 @@ static Hash djb_hash(Byte const data[], size_t len)
 
 // FIXME use a more robust way to change the checksum
 // Doing this so that checksum also depends on version
-Hash gssp_item_hash(Byte const data[], size_t len, Clock age) {
+Hash lapser_item_hash(Byte const data[], size_t len, Clock age) {
     return djb_hash(data, len) + age;
 }
 
@@ -41,34 +41,34 @@ Hash gssp_item_hash(Byte const data[], size_t len, Clock age) {
 // TODO: declare inline (?)
 // TODO: use this function instead of others
 // TODO: think to do the same for metadata
-item * gssp_get_item_structure(Key item_id) {
+item * lapser_get_item_structure(Key item_id) {
     return lookup[item_id];
 }
 
 
 // TODO Better logging facilities
-void gssp_log_printf(const char *fmt, ...) {
+void lapser_log_printf(const char *fmt, ...) {
 
     va_list args;
     va_start(args, fmt);
 
     struct timespec t;
     clock_gettime(CLOCK_REALTIME, &t);
-    printf("%ld:%05.2f, %02d: ", t.tv_sec, (t.tv_nsec)/1e6, _gssp_rank);
+    printf("%ld:%05.2f, %02d: ", t.tv_sec, (t.tv_nsec)/1e6, _lapser_rank);
 
     vprintf(fmt, args);
     va_end(args);
 }
 
 static FILE *log_out;
-void gssp_log_fprintf(const char *fmt, ...) {
+void lapser_log_fprintf(const char *fmt, ...) {
 
     va_list args;
     va_start(args, fmt);
 
     struct timespec t;
     clock_gettime(CLOCK_REALTIME, &t);
-    fprintf(log_out,"%ld:%05.2f, %02d: ", t.tv_sec, (t.tv_nsec)/1e6, _gssp_rank);
+    fprintf(log_out,"%ld:%05.2f, %02d: ", t.tv_sec, (t.tv_nsec)/1e6, _lapser_rank);
 
     vfprintf(log_out, fmt, args);
     fflush(log_out);
@@ -134,7 +134,7 @@ static inline void sanitize_key_lists(Key to_produce[], size_t *plen,
 
 
 
-int gssp_init(int      total_items,
+int lapser_init(int      total_items,
               size_t   size_of_item,
               Key      orig_keys_to_produce[],
               size_t   num_keys_to_produce,
@@ -155,16 +155,16 @@ int gssp_init(int      total_items,
     // Z) parse the item metadata to allow faster lookups to data we are interested
 
 
-    SUCCESS_OR_DIE(gaspi_proc_rank(&_gssp_rank));
-    SUCCESS_OR_DIE(gaspi_proc_num(&_gssp_num));
+    SUCCESS_OR_DIE(gaspi_proc_rank(&_lapser_rank));
+    SUCCESS_OR_DIE(gaspi_proc_num(&_lapser_num));
     char log_path[FILENAME_MAX] = ".";
     char log_name[FILENAME_MAX];
     // TODO propagate the CWD info from root to other processes (they are writing in $HOME)
     //getcwd(log_path, FILENAME_MAX);
-    snprintf(log_name, FILENAME_MAX, "/gssp-%d.out", _gssp_rank);
+    snprintf(log_name, FILENAME_MAX, "/lapser-%d.out", _lapser_rank);
     strncat(log_path, log_name, FILENAME_MAX);
     log_out = fopen(log_path, "a");
-    gssp_log_fprintf("After proc init\n");
+    lapser_log_fprintf("After proc init\n");
 
 
     // 0)
@@ -186,70 +186,70 @@ int gssp_init(int      total_items,
                        keys_to_consume, &num_keys_to_consume);
 
     // 1)
-    gssp_log_fprintf("Starting to create control segment\n");
+    lapser_log_fprintf("Starting to create control segment\n");
     gaspi_size_t const control_segment_size = sizeof(gaspi_atomic_value_t) + total_items * sizeof(item_metadata);
     SUCCESS_OR_DIE(
-    gaspi_segment_create(GSSP_CONTROL_SEGMENT, control_segment_size,
+    gaspi_segment_create(LAPSER_CONTROL_SEGMENT, control_segment_size,
                          GASPI_GROUP_ALL, GASPI_BLOCK, GASPI_MEM_INITIALIZED));
-    gssp_log_fprintf("Created control segment\n");
+    lapser_log_fprintf("Created control segment\n");
 
 
     // 2)
-    gssp_log_fprintf("Reserve space in control segment\n");
+    lapser_log_fprintf("Reserve space in control segment\n");
     gaspi_offset_t start_of_range;
 
     SUCCESS_OR_DIE(
-    gaspi_atomic_fetch_add(GSSP_CONTROL_SEGMENT,
+    gaspi_atomic_fetch_add(LAPSER_CONTROL_SEGMENT,
                            /*offset*/ 0,
-                           GSSP_CONTROL_RANK,
+                           LAPSER_CONTROL_RANK,
                            num_keys_to_produce, &start_of_range, GASPI_BLOCK));
 
-    gssp_log_fprintf("Reserved space in control segment: [%ld, %ld[\n", start_of_range, start_of_range+num_keys_to_produce);
+    lapser_log_fprintf("Reserved space in control segment: [%ld, %ld[\n", start_of_range, start_of_range+num_keys_to_produce);
 
 
     gaspi_pointer_t base_seg;
     item_metadata *meta;
-    SUCCESS_OR_DIE( gaspi_segment_ptr(GSSP_CONTROL_SEGMENT, &base_seg) );
+    SUCCESS_OR_DIE( gaspi_segment_ptr(LAPSER_CONTROL_SEGMENT, &base_seg) );
     // Offset because atomic counter comes first
     meta = (item_metadata*) ((char*) base_seg +  sizeof(gaspi_atomic_value_t));
 
     // Round up slot size to 8 bytes (because of alignment)
     item_slot_size = (sizeof(item) + sizeof(Byte[size_of_item]) + 7) & ~(7);
 
-    gssp_log_fprintf("Start filling control segment\n", start_of_range);
+    lapser_log_fprintf("Start filling control segment\n", start_of_range);
     for(size_t i=start_of_range,j=0;i<start_of_range+num_keys_to_produce; ++i, ++j) {
         meta[i].item_id = keys_to_produce[j];
-        meta[i].producer = _gssp_rank;
+        meta[i].producer = _lapser_rank;
         meta[i].offset = j*item_slot_size;
     }
 
     // 3)
-    gaspi_notification_id_t const metadata_write      = _gssp_rank;
+    gaspi_notification_id_t const metadata_write      = _lapser_rank;
     gaspi_offset_t          const metadata_offset     = start_of_range * sizeof(item_metadata)
                                                         + sizeof(gaspi_atomic_value_t);
     gaspi_size_t            const metadata_size       = num_keys_to_produce * sizeof(item_metadata);
 
 
-    for(gaspi_rank_t remote_rank=0; remote_rank<_gssp_num; ++remote_rank) {
-        if(remote_rank == _gssp_rank) { continue ; }
-        gssp_log_fprintf("Sending full info to rank %d\n", remote_rank);
-        write_notify_and_wait(GSSP_CONTROL_SEGMENT, metadata_offset,
-                              remote_rank, GSSP_CONTROL_SEGMENT, metadata_offset,
+    for(gaspi_rank_t remote_rank=0; remote_rank<_lapser_num; ++remote_rank) {
+        if(remote_rank == _lapser_rank) { continue ; }
+        lapser_log_fprintf("Sending full info to rank %d\n", remote_rank);
+        write_notify_and_wait(LAPSER_CONTROL_SEGMENT, metadata_offset,
+                              remote_rank, LAPSER_CONTROL_SEGMENT, metadata_offset,
                               metadata_size,
-                              metadata_write, PRODUCE_WRITTEN, GSSP_CONTROL_QUEUE);
+                              metadata_write, PRODUCE_WRITTEN, LAPSER_CONTROL_QUEUE);
     }
 
-    gssp_log_fprintf("Waiting for notifications\n");
-    for(gaspi_rank_t remote_rank=0; remote_rank<_gssp_num; ++remote_rank) {
-        if(remote_rank == _gssp_rank) { continue ; }
-        wait_or_die(GSSP_CONTROL_SEGMENT, remote_rank, PRODUCE_WRITTEN);
+    lapser_log_fprintf("Waiting for notifications\n");
+    for(gaspi_rank_t remote_rank=0; remote_rank<_lapser_num; ++remote_rank) {
+        if(remote_rank == _lapser_rank) { continue ; }
+        wait_or_die(LAPSER_CONTROL_SEGMENT, remote_rank, PRODUCE_WRITTEN);
     }
 
 #if defined(PUSH_COMM)
     // 4) registering interest
-    gssp_log_fprintf("Start signaling consumers\n");
-    size_t const cons_index = _gssp_rank >> 6;
-    size_t const cons_off = _gssp_rank % 64;
+    lapser_log_fprintf("Start signaling consumers\n");
+    size_t const cons_index = _lapser_rank >> 6;
+    size_t const cons_off = _lapser_rank % 64;
     for(int i=0; i<total_items; ++i) {
 
         Key *k = bsearch(&meta[i].item_id, keys_to_consume, num_keys_to_consume,
@@ -266,11 +266,11 @@ int gssp_init(int      total_items,
             (Byte*)&meta[i].offset-(Byte*)base_seg;
 
         gaspi_offset_t c_rem_offset =
-            (Byte*)&meta[i].consumers_offset[_gssp_rank]-(Byte*)base_seg;
+            (Byte*)&meta[i].consumers_offset[_lapser_rank]-(Byte*)base_seg;
 
-        write_and_wait(GSSP_CONTROL_SEGMENT, c_loc_offset,
-                       meta[i].producer, GSSP_CONTROL_SEGMENT, c_rem_offset,
-                       sizeof(gaspi_offset_t), GSSP_CONTROL_QUEUE);
+        write_and_wait(LAPSER_CONTROL_SEGMENT, c_loc_offset,
+                       meta[i].producer, LAPSER_CONTROL_SEGMENT, c_rem_offset,
+                       sizeof(gaspi_offset_t), LAPSER_CONTROL_QUEUE);
 
         // TODO maybe use an atomic (fetch) add? I don't care about other's bits,
         //      and if there are no bugs/no retrying to register, + <=> |
@@ -281,7 +281,7 @@ int gssp_init(int      total_items,
             comparator = *prev_value;
             desired = comparator | UINT64_C(1) << (cons_off);
             SUCCESS_OR_DIE(
-            gaspi_atomic_compare_swap(GSSP_CONTROL_SEGMENT,
+            gaspi_atomic_compare_swap(LAPSER_CONTROL_SEGMENT,
                                       consumer_offset,
                                       meta[i].producer,
                                       comparator, desired, prev_value,
@@ -289,15 +289,15 @@ int gssp_init(int      total_items,
         } while(*prev_value != comparator);
         meta[i].consumers[cons_index] |= UINT64_C(1) << cons_off;
     }
-    gssp_log_fprintf("End signaling consumers\n");
+    lapser_log_fprintf("End signaling consumers\n");
 #endif
 
 
     // Y)
-    gssp_log_fprintf("Start allocating data segment & auxiliary data structures\n");
+    lapser_log_fprintf("Start allocating data segment & auxiliary data structures\n");
     gaspi_size_t const data_segment_size = (num_keys_to_produce + num_keys_to_consume) * item_slot_size;
     SUCCESS_OR_DIE(
-    gaspi_segment_create(GSSP_DATA_SEGMENT, data_segment_size,
+    gaspi_segment_create(LAPSER_DATA_SEGMENT, data_segment_size,
                          GASPI_GROUP_ALL, GASPI_BLOCK, GASPI_MEM_INITIALIZED));
 
     // Z) Do stuff with the new metadata
@@ -305,7 +305,7 @@ int gssp_init(int      total_items,
     assert(lookup != NULL);
 
     Byte* base_item_pointer;
-    SUCCESS_OR_DIE( gaspi_segment_ptr(GSSP_DATA_SEGMENT, (gaspi_pointer_t *) &base_item_pointer) );
+    SUCCESS_OR_DIE( gaspi_segment_ptr(LAPSER_DATA_SEGMENT, (gaspi_pointer_t *) &base_item_pointer) );
 
     int item_order_number = 0;
 
@@ -315,7 +315,7 @@ int gssp_init(int      total_items,
                                      + (item_order_number++)
                                      * item_slot_size);
 
-        to_produce->checksum = gssp_item_hash(to_produce->value, size_of_item, to_produce->version);
+        to_produce->checksum = lapser_item_hash(to_produce->value, size_of_item, to_produce->version);
         lookup[item_id] = to_produce;
     }
     for(size_t i=0; i<num_keys_to_consume; ++i) {
@@ -324,7 +324,7 @@ int gssp_init(int      total_items,
                                      + (item_order_number++)
                                      * item_slot_size);
 
-        to_consume->checksum = gssp_item_hash(to_consume->value, size_of_item, to_consume->version);
+        to_consume->checksum = lapser_item_hash(to_consume->value, size_of_item, to_consume->version);
         lookup[item_id] = to_consume;
     }
 
@@ -351,28 +351,28 @@ int gssp_init(int      total_items,
 
     free(keys_to_produce);
     free(keys_to_consume);
-    gssp_log_fprintf("Finished initialization\n");
+    lapser_log_fprintf("Finished initialization\n");
     return 0;
 }
 
 
-int gssp_finish() {
+int lapser_finish() {
 
-    gssp_log_fprintf("Deleting auxiliary data structures\n");
+    lapser_log_fprintf("Deleting auxiliary data structures\n");
     free(lookup);
     free(meta_lookup);
 
-    wait_for_flush_queue(GSSP_CONTROL_QUEUE);
-    wait_for_flush_queue(GSSP_DATA_QUEUE);
+    wait_for_flush_queue(LAPSER_CONTROL_QUEUE);
+    wait_for_flush_queue(LAPSER_DATA_QUEUE);
 
-    gssp_log_fprintf("Waiting at barrier to delete segments\n");
+    lapser_log_fprintf("Waiting at barrier to delete segments\n");
     SUCCESS_OR_DIE( gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK) );
 
-    gssp_log_fprintf("Deleting segments\n");
-    SUCCESS_OR_DIE( gaspi_segment_delete(GSSP_DATA_SEGMENT) );
-    SUCCESS_OR_DIE( gaspi_segment_delete(GSSP_CONTROL_SEGMENT) );
+    lapser_log_fprintf("Deleting segments\n");
+    SUCCESS_OR_DIE( gaspi_segment_delete(LAPSER_DATA_SEGMENT) );
+    SUCCESS_OR_DIE( gaspi_segment_delete(LAPSER_CONTROL_SEGMENT) );
 
-    gssp_log_fprintf("Done\n");
+    lapser_log_fprintf("Done\n");
 
     return 0;
 }

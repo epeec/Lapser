@@ -1,10 +1,10 @@
 
 #include <GASPI.h>
-#include <gssp.h>
+#include <lapser.h>
 #include "success_or_die.h"
 #include <stdlib.h>
 
-// To test time for large gssp_init
+// To test time for large lapser_init
 
 int main() {
 
@@ -29,11 +29,11 @@ int main() {
     Key a = rank;
     Key b = (rank + 1) % num;
 
-    gssp_init(number_of_keys, sizeof(char),
+    lapser_init(number_of_keys, sizeof(char),
               to_produce, sizeof to_produce/sizeof to_produce[0],
               to_consume, sizeof to_consume/sizeof to_consume[0], 0);
 
-    gssp_finish();
+    lapser_finish();
 
     SUCCESS_OR_DIE( gaspi_proc_term(GASPI_BLOCK) );
     return 0;

@@ -1,5 +1,5 @@
-GSSP: Gaspi Symmetric Slackful Parameter server
-=============================================
+Lapser: LAzy Parameter Server with RDMA
+=======================================
 
 
 Main concepts:
@@ -20,7 +20,7 @@ Please note that the final linking step with GPI-2 should be done with your
 application build step;
 to compile this library, having the GASPI header files is enough.
 
-If you choose to compile GSSP as a shared library (the default option),
+If you choose to compile Lapser as a shared library (the default option),
 remember to run `ldconfig` after installing the library, to set up the appropriate
 bindings in your system linker.
 

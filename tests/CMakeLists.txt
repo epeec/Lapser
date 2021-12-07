@@ -45,15 +45,15 @@ endif()
 
 
 add_executable(test_with_gaspi
-               gssp_test_main.cpp
-               no_gssp_instance.cpp
+               lapser_test_main.cpp
+               no_lapser_instance.cpp
                simple_instance.cpp
                leftright_instance.cpp
                full_instance.cpp
                checksum_works.cpp
                slack_tests.cpp
 )
-target_link_libraries(test_with_gaspi PUBLIC gtest gssp ${GASPI_DBG_LIB} -pthread)
+target_link_libraries(test_with_gaspi PUBLIC gtest lapser ${GASPI_DBG_LIB} -pthread)
 
 #give access to internals (src) and public interface (include)
 target_include_directories(test_with_gaspi PRIVATE ${PROJECT_SOURCE_DIR}/src
@@ -71,4 +71,4 @@ add_custom_target(check
                   COMMAND gaspi_run     -m ${PROJECT_SOURCE_DIR}/hosts.txt ${CHECK_COMMAND} VERBATIM
                   COMMAND gaspi_cleanup -m ${PROJECT_SOURCE_DIR}/hosts.txt
                   DEPENDS test_with_gaspi
-                  COMMENT "Running tests with gaspi, mode ${GSSP_COMM}")
+                  COMMENT "Running tests with gaspi, mode ${LAPSER_COMM}")

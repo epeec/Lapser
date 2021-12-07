@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(gssp VERSION 0.001 LANGUAGES C CXX)
+project(lapser VERSION 0.001 LANGUAGES C CXX)
 set(CMAKE_DEBUG_POSTFIX -dbg)
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
-set(GSSP_COMM "LOCAL_COMM" CACHE STRING "Pattern of communication to use")
-set_property(CACHE GSSP_COMM PROPERTY STRINGS
+set(LAPSER_COMM "LOCAL_COMM" CACHE STRING "Pattern of communication to use")
+set_property(CACHE LAPSER_COMM PROPERTY STRINGS
     LOCAL_COMM
     PULL_COMM
     PUSH_COMM)
@@ -50,4 +50,4 @@ if(ENABLE_APPS)
     add_subdirectory(apps)
 endif()
 
-install(FILES include/gssp.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(FILES include/lapser.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})

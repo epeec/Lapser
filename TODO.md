@@ -4,7 +4,7 @@ TODO
 
 (Note: also see TODOs & FIXMEs on the code)
 
-  - gssp_set/gssp_get
+  - lapser_set/lapser_get
     + [X] Just local version
     + [X] Basic PULL version (always gaspi_read, don't ask if its good to go)
     + [X] Basic PUSH version (same but gaspi_write)
@@ -14,7 +14,7 @@ TODO
   - Make actually working tests
     + [X] Write googletest fixtures for GASPI
     + [X] Write script to launch tests
-    + [X] Write some gssp app code to see if it works somehow
+    + [X] Write some lapser app code to see if it works somehow
     + [X] Translate the src/main.c into a test case
     + [ ] Figure out if there are better ways to integrate googletest in CMake
 
@@ -22,7 +22,7 @@ TODO
   - [X] Better code style, see Roman example
   - [X] Add sample app folder, to debug failing test cases (use the exp test)
 
-  - [X] Fix linking stuff (between GSSP and GASPI)
+  - [X] Fix linking stuff (between Lapser and GASPI)
     + [ ] Fix failing find_library() call on test CMakeList.txt -> use LD_PATHS
     + [X] Try to understand what CMake is doing when going the find_library() route
         ```
@@ -71,7 +71,7 @@ TODO
   - Make it thread-safe
     + [ ] Extern variables inside struct
     + [ ] Functions receive extra argument somehow pointing to the said struct
-    + [ ] Think about problems in multiple concurrent gssp initializations
+    + [ ] Think about problems in multiple concurrent Lapser initializations
 
   - [ ] Finish writing README
 

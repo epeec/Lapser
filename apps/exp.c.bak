@@ -1,6 +1,6 @@
 
 #include <GASPI.h>
-#include <gssp.h>
+#include <lapser.h>
 #include "success_or_die.h"
 
 // This is just a skeleton app to try out simple things
@@ -17,9 +17,9 @@ int main() {
     Key a = rank;
     Key b = (rank + 1) % num;
 
-    gssp_init(num, sizeof(char), &a, 1, &b, 1, 0);
+    lapser_init(num, sizeof(char), &a, 1, &b, 1, 0);
 
-    gssp_finish();
+    lapser_finish();
 
     SUCCESS_OR_DIE( gaspi_proc_term(GASPI_BLOCK) );
     return 0;

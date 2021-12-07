@@ -40,7 +40,7 @@ endif()
 
 add_executable(exp exp.c)
 
-target_link_libraries(exp gssp debug ${GASPI_DBG_LIB} optimized ${GASPI_LIB})
+target_link_libraries(exp lapser debug ${GASPI_DBG_LIB} optimized ${GASPI_LIB})
 target_link_libraries(exp -pthread)
 
 #give access to auxiliary GASPI functions
@@ -59,11 +59,11 @@ add_custom_target(run_app
                   COMMAND gaspi_run     -m ${PROJECT_SOURCE_DIR}/hosts.txt ${APP_COMMAND} VERBATIM
                   COMMAND gaspi_cleanup -m ${PROJECT_SOURCE_DIR}/hosts.txt
                   DEPENDS exp
-                  COMMENT "Running app exp, mode ${GSSP_COMM}")
+                  COMMENT "Running app exp, mode ${LAPSER_COMM}")
 
 add_custom_target(run_app_d
                   COMMAND gaspi_cleanup -m ${PROJECT_SOURCE_DIR}/hosts.txt || :
                   COMMAND gaspi_run     -m ${PROJECT_SOURCE_DIR}/hosts.txt -d ${APP_COMMAND} VERBATIM
                   COMMAND gaspi_cleanup -m ${PROJECT_SOURCE_DIR}/hosts.txt
                   DEPENDS exp
-                  COMMENT "Running app exp, mode ${GSSP_COMM}")
+                  COMMENT "Running app exp, mode ${LAPSER_COMM}")
