@@ -6,10 +6,11 @@
 #include <string.h>
 #include <inttypes.h>
 
-int lapser_set(Key    item_id,
-             void * new_value,
-             size_t value_size,
-             Clock  version) {
+int lapser_set(Key        item_id,
+               void *     new_value,
+               size_t     value_size,
+               Clock      version,
+               lapser_ctx *ctx) {
 
     // Alternative to this metadata lookup - verify item location;
     // because the produced slots are contiguous and at the beginning
@@ -30,11 +31,12 @@ int lapser_set(Key    item_id,
 }
 
 
-size_t lapser_get(Key    item_id,
-                void * recv_buf,
-                size_t buf_size,
-                Clock  base_version,
-                Clock  slack) {
+size_t lapser_get(Key        item_id,
+                  void *     recv_buf,
+                  size_t     buf_size,
+                  Clock      base_version,
+                  Clock      slack,
+                  lapser_ctx *ctx) {
 
     item_metadata * meta_read = meta_lookup[item_id];
 

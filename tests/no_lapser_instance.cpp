@@ -2,6 +2,7 @@
 #include "gtest/gtest.h"
 
 extern "C" {
+#include "lapser.h"
 #include "lapser_internal.h"
 }
 

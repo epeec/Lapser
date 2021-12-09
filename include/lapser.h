@@ -3,29 +3,18 @@
 #include <stdint.h>
 #include <stddef.h>
 
-typedef  unsigned char     Byte;
-typedef  uint64_t          Key;
-typedef  uint64_t          Clock;
-typedef  uint64_t          Hash;
-
-int lapser_init(int      total_items,
-              size_t   size_of_item,
-              Key      keys_to_produce[],
-              size_t   num_keys_to_produce,
-              Key      keys_to_consume[],
-              size_t   num_keys_to_consume,
-              uint16_t slack);
-
-int lapser_set(Key    item_id,
-             void * new_value,
-             size_t value_size,
-             Clock  version);
-
-size_t lapser_get(Key    item_id,
-                void * recv_buf,
-                size_t buf_size,
-                Clock  base_version,
-                Clock  slack);
+#include "multilapser.h"
 
 
-int lapser_finish();
+extern lapser_ctx *_lapser_global_ctx;
+
+#define lapser_init(total_items, size_of_item, keys_to_produce, num_keys_to_produce, keys_to_consume, num_keys_to_consume, slack) \
+    (lapser_init)(total_items, size_of_item, keys_to_produce, num_keys_to_produce, keys_to_consume, num_keys_to_consume, slack, _lapser_global_ctx)
+
+#define lapser_set(item_id, new_value, value_size, version) \
+    (lapser_set)(item_id, new_value, value_size, version, _lapser_global_ctx)
+
+#define lapser_get(item_id, recv_buf, buf_size, base_version, slack) \
+    (lapser_get)(item_id, recv_buf, buf_size, base_version, slack, _lapser_global_ctx)
+
+#define lapser_finish() (lapser_finish)(_lapser_global_ctx)

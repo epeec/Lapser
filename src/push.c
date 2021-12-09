@@ -6,10 +6,11 @@
 #include <string.h>
 #include <inttypes.h>
 
-int lapser_set(Key    item_id,
-             void * new_value,
-             size_t value_size,
-             Clock  version) {
+int lapser_set(Key        item_id,
+               void *     new_value,
+               size_t     value_size,
+               Clock      version,
+               lapser_ctx *ctx) {
 
     item_metadata * meta_write = meta_lookup[item_id];
     if(meta_write->producer != _lapser_rank) {
@@ -46,12 +47,13 @@ int lapser_set(Key    item_id,
     return 0;
 }
 
-size_t lapser_get(Key    item_id,
-                void * recv_buf,
-                size_t buf_size,
-                Clock  base_version,
-                Clock  slack) {
 
+size_t lapser_get(Key        item_id,
+                  void *     recv_buf,
+                  size_t     buf_size,
+                  Clock      base_version,
+                  Clock      slack,
+                  lapser_ctx *ctx) {
 
     item_metadata * meta_read = meta_lookup[item_id];
     if( !(meta_read->consumers[_lapser_rank>>6] & (UINT64_C(1) << (_lapser_rank%64)))

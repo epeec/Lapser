@@ -18,6 +18,7 @@ item_metadata** meta_lookup;
 gaspi_offset_t* consumers_offsets;
 size_t item_slot_size;
 gaspi_rank_t _lapser_rank, _lapser_num;
+lapser_ctx* _lapser_global_ctx;
 
 
 // DJB hash, adapted from http://www.cse.yorku.ca/~oz/hash.html
@@ -134,13 +135,14 @@ static inline void sanitize_key_lists(Key to_produce[], size_t *plen,
 
 
 
-int lapser_init(int      total_items,
-              size_t   size_of_item,
-              Key      orig_keys_to_produce[],
-              size_t   num_keys_to_produce,
-              Key      orig_keys_to_consume[],
-              size_t   num_keys_to_consume,
-              uint16_t slack)
+int lapser_init(int        total_items,
+                size_t     size_of_item,
+                Key        orig_keys_to_produce[],
+                size_t     num_keys_to_produce,
+                Key        orig_keys_to_consume[],
+                size_t     num_keys_to_consume,
+                uint16_t   slack,
+                lapser_ctx *ctx)
 
 {
     // -1) Maybe create separate groups?
@@ -356,7 +358,7 @@ int lapser_init(int      total_items,
 }
 
 
-int lapser_finish() {
+int lapser_finish(lapser_ctx *ctx) {
 
     lapser_log_fprintf("Deleting auxiliary data structures\n");
     free(lookup);

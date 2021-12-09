@@ -1,7 +1,7 @@
 #pragma once
 
-#include "lapser.h"
 #include <GASPI.h>
+#include "multilapser.h"
 
 // TODO: instead of starting with 0, start with highest possible segment/queue
 //        (to not clobber lower numbers,
@@ -11,6 +11,16 @@
 #define LAPSER_CONTROL_QUEUE 0
 #define LAPSER_DATA_SEGMENT 1
 #define LAPSER_DATA_QUEUE 1
+
+struct _lapser_ctx {
+    gaspi_rank_t       control_rank;
+    gaspi_segment_id_t control_segment;
+    gaspi_queue_id_t   control_queue;
+    gaspi_segment_id_t data_segment;
+    gaspi_queue_id_t   data_queue;
+};
+
+
 
 // TODO check limit at lapser_init
 #define LAPSER_MAX_NPROCS 256
