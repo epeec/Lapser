@@ -13,6 +13,15 @@
 
 // Memory location for these variables.
 // For documentation, see lapser_internal.h
+
+struct _lapser_ctx _lapser_context_array[LAPSER_MAX_CONCURRENT] =
+    {
+        // Pre-initialized, for when we only use 1 context
+      [0] = { .control_segment = 0, .control_queue = 0, .control_rank = 0,
+          .data_segment = 1, .data_queue = 1, .gpi_group = GASPI_GROUP_ALL }
+    };
+
+lapser_ctx *_lapser_global_ctx = &_lapser_context_array[0];
 item** lookup;
 item_metadata** meta_lookup;
 gaspi_offset_t* consumers_offsets;
@@ -191,8 +200,8 @@ int lapser_init(int        total_items,
     lapser_log_fprintf("Starting to create control segment\n");
     gaspi_size_t const control_segment_size = sizeof(gaspi_atomic_value_t) + total_items * sizeof(item_metadata);
     SUCCESS_OR_DIE(
-    gaspi_segment_create(LAPSER_CONTROL_SEGMENT, control_segment_size,
-                         GASPI_GROUP_ALL, GASPI_BLOCK, GASPI_MEM_INITIALIZED));
+    gaspi_segment_create(ctx->control_segment, control_segment_size,
+                         ctx->gpi_group, GASPI_BLOCK, GASPI_MEM_INITIALIZED));
     lapser_log_fprintf("Created control segment\n");
 
 
@@ -201,9 +210,9 @@ int lapser_init(int        total_items,
     gaspi_offset_t start_of_range;
 
     SUCCESS_OR_DIE(
-    gaspi_atomic_fetch_add(LAPSER_CONTROL_SEGMENT,
+    gaspi_atomic_fetch_add(ctx->control_segment,
                            /*offset*/ 0,
-                           LAPSER_CONTROL_RANK,
+                           ctx->control_rank,
                            num_keys_to_produce, &start_of_range, GASPI_BLOCK));
 
     lapser_log_fprintf("Reserved space in control segment: [%ld, %ld[\n", start_of_range, start_of_range+num_keys_to_produce);
@@ -211,12 +220,13 @@ int lapser_init(int        total_items,
 
     gaspi_pointer_t base_seg;
     item_metadata *meta;
-    SUCCESS_OR_DIE( gaspi_segment_ptr(LAPSER_CONTROL_SEGMENT, &base_seg) );
+    SUCCESS_OR_DIE( gaspi_segment_ptr(ctx->control_segment, &base_seg) );
     // Offset because atomic counter comes first
     meta = (item_metadata*) ((char*) base_seg +  sizeof(gaspi_atomic_value_t));
 
     // Round up slot size to 8 bytes (because of alignment)
     item_slot_size = (sizeof(item) + sizeof(Byte[size_of_item]) + 7) & ~(7);
+    ctx->item_slot_size = item_slot_size;
 
     lapser_log_fprintf("Start filling control segment\n", start_of_range);
     for(size_t i=start_of_range,j=0;i<start_of_range+num_keys_to_produce; ++i, ++j) {
@@ -235,16 +245,16 @@ int lapser_init(int        total_items,
     for(gaspi_rank_t remote_rank=0; remote_rank<_lapser_num; ++remote_rank) {
         if(remote_rank == _lapser_rank) { continue ; }
         lapser_log_fprintf("Sending full info to rank %d\n", remote_rank);
-        write_notify_and_wait(LAPSER_CONTROL_SEGMENT, metadata_offset,
-                              remote_rank, LAPSER_CONTROL_SEGMENT, metadata_offset,
+        write_notify_and_wait(ctx->control_segment, metadata_offset,
+                              remote_rank, ctx->control_segment, metadata_offset,
                               metadata_size,
-                              metadata_write, PRODUCE_WRITTEN, LAPSER_CONTROL_QUEUE);
+                              metadata_write, PRODUCE_WRITTEN, ctx->control_queue);
     }
 
     lapser_log_fprintf("Waiting for notifications\n");
     for(gaspi_rank_t remote_rank=0; remote_rank<_lapser_num; ++remote_rank) {
         if(remote_rank == _lapser_rank) { continue ; }
-        wait_or_die(LAPSER_CONTROL_SEGMENT, remote_rank, PRODUCE_WRITTEN);
+        wait_or_die(ctx->control_segment, remote_rank, PRODUCE_WRITTEN);
     }
 
 #if defined(PUSH_COMM)
@@ -270,9 +280,9 @@ int lapser_init(int        total_items,
         gaspi_offset_t c_rem_offset =
             (Byte*)&meta[i].consumers_offset[_lapser_rank]-(Byte*)base_seg;
 
-        write_and_wait(LAPSER_CONTROL_SEGMENT, c_loc_offset,
-                       meta[i].producer, LAPSER_CONTROL_SEGMENT, c_rem_offset,
-                       sizeof(gaspi_offset_t), LAPSER_CONTROL_QUEUE);
+        write_and_wait(ctx->control_segment, c_loc_offset,
+                       meta[i].producer, ctx->control_segment, c_rem_offset,
+                       sizeof(gaspi_offset_t), ctx->control_queue);
 
         // TODO maybe use an atomic (fetch) add? I don't care about other's bits,
         //      and if there are no bugs/no retrying to register, + <=> |
@@ -283,7 +293,7 @@ int lapser_init(int        total_items,
             comparator = *prev_value;
             desired = comparator | UINT64_C(1) << (cons_off);
             SUCCESS_OR_DIE(
-            gaspi_atomic_compare_swap(LAPSER_CONTROL_SEGMENT,
+            gaspi_atomic_compare_swap(ctx->control_segment,
                                       consumer_offset,
                                       meta[i].producer,
                                       comparator, desired, prev_value,
@@ -299,15 +309,15 @@ int lapser_init(int        total_items,
     lapser_log_fprintf("Start allocating data segment & auxiliary data structures\n");
     gaspi_size_t const data_segment_size = (num_keys_to_produce + num_keys_to_consume) * item_slot_size;
     SUCCESS_OR_DIE(
-    gaspi_segment_create(LAPSER_DATA_SEGMENT, data_segment_size,
-                         GASPI_GROUP_ALL, GASPI_BLOCK, GASPI_MEM_INITIALIZED));
+    gaspi_segment_create(ctx->data_segment, data_segment_size,
+                         ctx->gpi_group, GASPI_BLOCK, GASPI_MEM_INITIALIZED));
 
     // Z) Do stuff with the new metadata
     lookup = calloc(total_items, sizeof *lookup);
     assert(lookup != NULL);
 
     Byte* base_item_pointer;
-    SUCCESS_OR_DIE( gaspi_segment_ptr(LAPSER_DATA_SEGMENT, (gaspi_pointer_t *) &base_item_pointer) );
+    SUCCESS_OR_DIE( gaspi_segment_ptr(ctx->data_segment, (gaspi_pointer_t *) &base_item_pointer) );
 
     int item_order_number = 0;
 
@@ -351,6 +361,7 @@ int lapser_init(int        total_items,
     }
 #endif
 
+    ctx->slack = slack;
     free(keys_to_produce);
     free(keys_to_consume);
     lapser_log_fprintf("Finished initialization\n");
@@ -364,15 +375,20 @@ int lapser_finish(lapser_ctx *ctx) {
     free(lookup);
     free(meta_lookup);
 
-    wait_for_flush_queue(LAPSER_CONTROL_QUEUE);
-    wait_for_flush_queue(LAPSER_DATA_QUEUE);
+    wait_for_flush_queue(ctx->control_queue);
+    wait_for_flush_queue(ctx->data_queue);
 
     lapser_log_fprintf("Waiting at barrier to delete segments\n");
-    SUCCESS_OR_DIE( gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK) );
+    SUCCESS_OR_DIE( gaspi_barrier(ctx->gpi_group, GASPI_BLOCK) );
 
     lapser_log_fprintf("Deleting segments\n");
-    SUCCESS_OR_DIE( gaspi_segment_delete(LAPSER_DATA_SEGMENT) );
-    SUCCESS_OR_DIE( gaspi_segment_delete(LAPSER_CONTROL_SEGMENT) );
+    SUCCESS_OR_DIE( gaspi_segment_delete(ctx->data_segment) );
+    SUCCESS_OR_DIE( gaspi_segment_delete(ctx->control_segment) );
+
+    if(ctx != _lapser_global_ctx) {
+        lapser_log_fprintf("Zeroing out ctx, to prevent use-after-free\n");
+        memset(ctx, '\0', sizeof(lapser_ctx));
+    }
 
     lapser_log_fprintf("Done\n");
 

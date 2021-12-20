@@ -37,9 +37,9 @@ int lapser_set(Key        item_id,
         gaspi_offset_t const rem_off = meta_write->consumers_offset[rem_rank];
         gaspi_offset_t const loc_off = meta_write->offset;
 
-        write_notify_and_wait(LAPSER_DATA_SEGMENT, loc_off,
-                              rem_rank, LAPSER_DATA_SEGMENT, rem_off, item_slot_size,
-                              item_notify_id, 1, LAPSER_DATA_QUEUE);
+        write_notify_and_wait(ctx->data_segment, loc_off,
+                              rem_rank, ctx->data_segment, rem_off, item_slot_size,
+                              item_notify_id, 1, ctx->data_queue);
 
 
     }
@@ -85,7 +85,7 @@ wait_for_incoming:
     // TODO finer control on how we wait, and how much
     if( _lapser_rank != meta_read->producer) {
         while(base_version > time_read + slack) {
-            wait_or_die_limited(LAPSER_DATA_SEGMENT, item_notify_id, 1, 500 /*miliseconds*/);
+            wait_or_die_limited(ctx->data_segment, item_notify_id, 1, 500 /*miliseconds*/);
             time_read = to_read->version;
         }
     }
@@ -105,7 +105,7 @@ wait_for_incoming:
 
     if(local_checksum != before) {
         // Hoping it is an ongoing write
-        int res = wait_or_die_limited(LAPSER_DATA_SEGMENT, item_notify_id, 1, 500 /*miliseconds*/);
+        int res = wait_or_die_limited(ctx->data_segment, item_notify_id, 1, 500 /*miliseconds*/);
         lapser_log_fprintf("Different checksum in item %"PRIu64", clock %"PRIu64" item clock prev %"PRIu64" now %"PRIu64", "
                          "wait got %ld (before %"PRIx64" now %"PRIx64" calc %"PRIx64")\n",
                         item_id, base_version, time_read, to_read->version, res, before, to_read->checksum, local_checksum);

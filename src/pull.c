@@ -43,7 +43,7 @@ size_t lapser_get(Key        item_id,
     item * to_read = lookup[item_id];
 
     Byte* base_item_pointer;
-    SUCCESS_OR_DIE( gaspi_segment_ptr(LAPSER_DATA_SEGMENT, (gaspi_pointer_t *) &base_item_pointer) );
+    SUCCESS_OR_DIE( gaspi_segment_ptr(ctx->data_segment, (gaspi_pointer_t *) &base_item_pointer) );
 
     int retries = 5;
     Hash local_checksum = 0xdeadbeef;
@@ -71,15 +71,15 @@ wait_for_incoming:
         while(base_version > time_read + slack || \
               before != lapser_item_hash(to_read->value, buf_size, time_read)) {
             gaspi_return_t ret;
-            while( (ret = (gaspi_read_notify(LAPSER_DATA_SEGMENT, local_item_offset,
-                                             meta_read->producer, LAPSER_DATA_SEGMENT,
+            while( (ret = (gaspi_read_notify(ctx->data_segment, local_item_offset,
+                                             meta_read->producer, ctx->data_segment,
                                              meta_read->offset, item_slot_size,
-                                             item_notify_id, LAPSER_DATA_QUEUE,
+                                             item_notify_id, ctx->data_queue,
                                              GASPI_BLOCK)) ) == GASPI_QUEUE_FULL) {
-                wait_for_flush_queue(LAPSER_DATA_QUEUE);
+                wait_for_flush_queue(ctx->data_queue);
             }
 
-            wait_or_die_limited(LAPSER_DATA_SEGMENT, item_notify_id, 1, 500 /* miliseconds */);
+            wait_or_die_limited(ctx->data_queue, item_notify_id, 1, 500 /* miliseconds */);
             time_read = to_read->version;
             before = to_read->checksum;
         }
@@ -97,7 +97,7 @@ wait_for_incoming:
 
     if(local_checksum != to_read->checksum) {
         // FIXME this is probably wrong in this case, I should have the other guy notifying me
-        int res = wait_or_die_limited(LAPSER_DATA_SEGMENT, item_notify_id, 1, 500 /*miliseconds*/);
+        int res = wait_or_die_limited(ctx->data_segment, item_notify_id, 1, 500 /*miliseconds*/);
         lapser_log_fprintf("Different checksum in item %"PRIu64", clock %"PRIu64" item clock prev %"PRIu64" now %"PRIu64", "
                          "wait got %ld (before %"PRIx64" now %"PRIx64" calc %"PRIx64")\n",
                         item_id, base_version, time_read, to_read->version, res, before, to_read->checksum, local_checksum);
