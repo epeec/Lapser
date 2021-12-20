@@ -1,5 +1,6 @@
 #pragma once
 
+#include <GASPI.h>
 #include <stdint.h>
 #include <stddef.h>
 
@@ -33,3 +34,9 @@ size_t lapser_get(Key        item_id,
                   lapser_ctx *ctx);
 
 int lapser_finish(lapser_ctx *ctx);
+
+
+// Lapser contexts management functions
+gaspi_return_t lapser_init_config_ctx(lapser_ctx **res);
+
+gaspi_return_t lapser_free_ctx(lapser_ctx *ctx);

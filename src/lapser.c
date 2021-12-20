@@ -386,8 +386,8 @@ int lapser_finish(lapser_ctx *ctx) {
     SUCCESS_OR_DIE( gaspi_segment_delete(ctx->control_segment) );
 
     if(ctx != _lapser_global_ctx) {
-        lapser_log_fprintf("Zeroing out ctx, to prevent use-after-free\n");
-        memset(ctx, '\0', sizeof(lapser_ctx));
+        lapser_log_fprintf("Freeing Lapser context\n");
+        lapser_free_ctx(ctx);
     }
 
     lapser_log_fprintf("Done\n");

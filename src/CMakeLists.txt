@@ -19,7 +19,7 @@ add_definitions(-D${LAPSER_COMM})
 message(STATUS "Communication method: ${LAPSER_COMM}")
 
 
-add_library(lapser lapser.c $<TARGET_OBJECTS:gaspi_aux_functions> ${impl-files})
+add_library(lapser lapser.c lapser_ctx.c $<TARGET_OBJECTS:gaspi_aux_functions> ${impl-files})
 
 target_include_directories(lapser PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
                                        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
