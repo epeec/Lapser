@@ -50,4 +50,5 @@ if(ENABLE_APPS)
     add_subdirectory(apps)
 endif()
 
-install(FILES include/lapser.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(FILES include/lapser.h include/multilapser.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
