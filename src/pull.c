@@ -14,14 +14,14 @@ int lapser_set(Key        item_id,
 
     // Alternative to this metadata lookup - verify item location;
     // because the produced slots are contiguous and at the beginning
-    item_metadata * meta_write = meta_lookup[item_id];
+    item_metadata * meta_write = ctx->meta_lookup[item_id];
     if(meta_write->producer != _lapser_rank) {
         lapser_log_fprintf("Trying to set item %"PRIu64", when the producer rank is %d\n",
                          item_id, meta_write->producer);
         return -1;
     }
 
-    item * to_write = lookup[item_id];
+    item * to_write = ctx->lookup[item_id];
 
     memcpy(to_write->value, new_value, value_size);
     to_write->checksum = lapser_item_hash(new_value, value_size, version);
@@ -38,9 +38,9 @@ size_t lapser_get(Key        item_id,
                   Clock      slack,
                   lapser_ctx *ctx) {
 
-    item_metadata * meta_read = meta_lookup[item_id];
+    item_metadata * meta_read = ctx->meta_lookup[item_id];
 
-    item * to_read = lookup[item_id];
+    item * to_read = ctx->lookup[item_id];
 
     Byte* base_item_pointer;
     SUCCESS_OR_DIE( gaspi_segment_ptr(ctx->data_segment, (gaspi_pointer_t *) &base_item_pointer) );
@@ -73,7 +73,8 @@ wait_for_incoming:
             gaspi_return_t ret;
             while( (ret = (gaspi_read_notify(ctx->data_segment, local_item_offset,
                                              meta_read->producer, ctx->data_segment,
-                                             meta_read->offset, item_slot_size,
+                                             meta_read->offset,
+                                             ctx->item_slot_size,
                                              item_notify_id, ctx->data_queue,
                                              GASPI_BLOCK)) ) == GASPI_QUEUE_FULL) {
                 wait_for_flush_queue(ctx->data_queue);

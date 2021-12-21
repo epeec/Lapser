@@ -46,10 +46,12 @@ endif()
 
 add_executable(test_with_gaspi
                lapser_test_main.cpp
+               ctx_tests.cpp
                no_lapser_instance.cpp
                simple_instance.cpp
                leftright_instance.cpp
                full_instance.cpp
+               simple_multilapser.cpp
                checksum_works.cpp
                slack_tests.cpp
 )

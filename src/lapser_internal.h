@@ -3,20 +3,6 @@
 #include <GASPI.h>
 #include "multilapser.h"
 
-struct _lapser_ctx {
-    uint16_t           slack;
-    gaspi_segment_id_t data_segment;
-    gaspi_queue_id_t   data_queue;
-    size_t             item_slot_size;
-    gaspi_rank_t       control_rank;
-    gaspi_segment_id_t control_segment;
-    gaspi_queue_id_t   control_queue;
-    gaspi_group_t      gpi_group;
-};
-
-#define LAPSER_MAX_CONCURRENT 8
-extern struct _lapser_ctx _lapser_context_array[LAPSER_MAX_CONCURRENT];
-
 // TODO check limit at lapser_init
 #define LAPSER_MAX_NPROCS 256
 
@@ -35,8 +21,30 @@ typedef struct {
     Hash checksum;
     Byte  value[];
 } item;
+
+struct _lapser_ctx {
+    uint16_t           slack;
+    // Auxiliary datastructure: looking up the item location
+    // using the key as indexer: Key -> item*
+    item**             lookup;
+    // Auxiliary datastructure: looking up item metadata
+    // using the key as indexer: Key -> item_metadata*
+    item_metadata**    meta_lookup;
+    gaspi_segment_id_t data_segment;
+    gaspi_queue_id_t   data_queue;
+    size_t             item_slot_size;
+    gaspi_rank_t       control_rank;
+    gaspi_segment_id_t control_segment;
+    gaspi_queue_id_t   control_queue;
+    gaspi_group_t      gpi_group;
+};
+
+#define LAPSER_MAX_CONCURRENT 8
+extern struct _lapser_ctx _lapser_context_array[LAPSER_MAX_CONCURRENT];
+
 // Getter for the whole structure
-item * lapser_get_item_structure(Key item_id);
+item * lapser_get_item_structure(Key item_id, lapser_ctx *c);
+
 
 // TODO find a way to manage the read_notify notification id values -
 //      I cannot use directly the item id (too large), and have to use
@@ -49,18 +57,6 @@ enum notify_situations {
     ITEM_NOT_OFFSET = 2048
 };
 
-// Auxiliary datastructure: looking up the item location
-// using the key as indexer: Key -> item*
-extern item** lookup;
-
-// Auxiliary datastructure: looking up item metadata
-// using the key as indexer: Key -> item_metadata*
-// TODO maybe try to avoid the meta_lookup if it is a get of local memory?
-//      some kind of caching/flag in item?
-extern item_metadata** meta_lookup;
-
-// Size each item occupies in the data segment
-extern size_t item_slot_size;
 
 // Just to not call the proc_rank/num over and over
 extern gaspi_rank_t _lapser_rank, _lapser_num;
@@ -78,4 +74,3 @@ void lapser_log_fprintf(const char *fmt, ...);
 // TODO better handling of variable size: if last set only used K bytes, get only returns those
 //      bytes
 // TODO think if I should really include consumers when not needed (like in PULL)
-

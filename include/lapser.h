@@ -9,7 +9,7 @@
 extern lapser_ctx *_lapser_global_ctx;
 
 #define lapser_init(total_items, size_of_item, keys_to_produce, num_keys_to_produce, keys_to_consume, num_keys_to_consume, slack) \
-    (lapser_init)(total_items, size_of_item, keys_to_produce, num_keys_to_produce, keys_to_consume, num_keys_to_consume, slack, _lapser_global_ctx)
+    (lapser_init)(total_items, size_of_item, keys_to_produce, num_keys_to_produce, keys_to_consume, num_keys_to_consume, slack, &_lapser_global_ctx)
 
 #define lapser_set(item_id, new_value, value_size, version) \
     (lapser_set)(item_id, new_value, value_size, version, _lapser_global_ctx)

@@ -12,14 +12,14 @@ int lapser_set(Key        item_id,
                Clock      version,
                lapser_ctx *ctx) {
 
-    item_metadata * meta_write = meta_lookup[item_id];
+    item_metadata * meta_write = ctx->meta_lookup[item_id];
     if(meta_write->producer != _lapser_rank) {
         lapser_log_fprintf("Trying to set item %"PRIu64", when the producer rank is %d\n",
                          item_id, meta_write->producer);
         return -1;
     }
 
-    item * to_write = lookup[item_id];
+    item * to_write = ctx->lookup[item_id];
 
     memcpy(to_write->value, new_value, value_size);
     to_write->checksum = lapser_item_hash(new_value, value_size, version);
@@ -38,7 +38,8 @@ int lapser_set(Key        item_id,
         gaspi_offset_t const loc_off = meta_write->offset;
 
         write_notify_and_wait(ctx->data_segment, loc_off,
-                              rem_rank, ctx->data_segment, rem_off, item_slot_size,
+                              rem_rank, ctx->data_segment, rem_off,
+                              ctx->item_slot_size,
                               item_notify_id, 1, ctx->data_queue);
 
 
@@ -55,7 +56,7 @@ size_t lapser_get(Key        item_id,
                   Clock      slack,
                   lapser_ctx *ctx) {
 
-    item_metadata * meta_read = meta_lookup[item_id];
+    item_metadata * meta_read = ctx->meta_lookup[item_id];
     if( !(meta_read->consumers[_lapser_rank>>6] & (UINT64_C(1) << (_lapser_rank%64)))
        && meta_read->producer != _lapser_rank) {
         lapser_log_fprintf("Trying to read item %"PRIu64", when I am not producer (which is %d) nor consumer (bitset: %"PRIu64")\n",
@@ -63,7 +64,7 @@ size_t lapser_get(Key        item_id,
         return -1;
     }
 
-    item * to_read = lookup[item_id];
+    item * to_read = ctx->lookup[item_id];
 
     int retries = 5;
     Hash local_checksum = 0xdeadbeef;

@@ -22,13 +22,7 @@ struct _lapser_ctx _lapser_context_array[LAPSER_MAX_CONCURRENT] =
     };
 
 lapser_ctx *_lapser_global_ctx = &_lapser_context_array[0];
-item** lookup;
-item_metadata** meta_lookup;
-gaspi_offset_t* consumers_offsets;
-size_t item_slot_size;
 gaspi_rank_t _lapser_rank, _lapser_num;
-lapser_ctx* _lapser_global_ctx;
-
 
 // DJB hash, adapted from http://www.cse.yorku.ca/~oz/hash.html
 static Hash djb_hash(Byte const data[], size_t len)
@@ -51,8 +45,8 @@ Hash lapser_item_hash(Byte const data[], size_t len, Clock age) {
 // TODO: declare inline (?)
 // TODO: use this function instead of others
 // TODO: think to do the same for metadata
-item * lapser_get_item_structure(Key item_id) {
-    return lookup[item_id];
+item * lapser_get_item_structure(Key item_id, lapser_ctx *ctx) {
+    return ctx->lookup[item_id];
 }
 
 
@@ -151,10 +145,10 @@ int lapser_init(int        total_items,
                 Key        orig_keys_to_consume[],
                 size_t     num_keys_to_consume,
                 uint16_t   slack,
-                lapser_ctx *ctx)
+                lapser_ctx **ptr_to_ctx)
 
 {
-    // -1) Maybe create separate groups?
+    // -1) Create appropriate ctx if NULL; maybe create separate groups?
     // 0) Sanitize arguments and key lists
     // 1) Allocate control segment
     // 2) fetch & add to CONTROL_RANK, start to fill entries according to keys
@@ -177,6 +171,18 @@ int lapser_init(int        total_items,
     log_out = fopen(log_path, "a");
     lapser_log_fprintf("After proc init\n");
 
+    // -1)
+    lapser_ctx *ctx;
+    if(ptr_to_ctx == NULL) {
+        lapser_log_fprintf("Literal NULL passed as ctx, using default one\n");
+        ctx = _lapser_global_ctx;
+    } else if(*ptr_to_ctx == NULL) {
+        lapser_log_fprintf("Variable NULL context, allocating and giving new one\n");
+        SUCCESS_OR_DIE( lapser_init_config_ctx(ptr_to_ctx) );
+        ctx = *ptr_to_ctx;
+    } else {
+        ctx = *ptr_to_ctx;
+    }
 
     // 0)
     size_t total_prod_size = sizeof(Key) * num_keys_to_produce;
@@ -225,6 +231,7 @@ int lapser_init(int        total_items,
     meta = (item_metadata*) ((char*) base_seg +  sizeof(gaspi_atomic_value_t));
 
     // Round up slot size to 8 bytes (because of alignment)
+    size_t item_slot_size;
     item_slot_size = (sizeof(item) + sizeof(Byte[size_of_item]) + 7) & ~(7);
     ctx->item_slot_size = item_slot_size;
 
@@ -307,12 +314,16 @@ int lapser_init(int        total_items,
 
     // Y)
     lapser_log_fprintf("Start allocating data segment & auxiliary data structures\n");
+
     gaspi_size_t const data_segment_size = (num_keys_to_produce + num_keys_to_consume) * item_slot_size;
     SUCCESS_OR_DIE(
     gaspi_segment_create(ctx->data_segment, data_segment_size,
                          ctx->gpi_group, GASPI_BLOCK, GASPI_MEM_INITIALIZED));
 
     // Z) Do stuff with the new metadata
+    item** lookup;
+    item_metadata** meta_lookup;
+
     lookup = calloc(total_items, sizeof *lookup);
     assert(lookup != NULL);
 
@@ -362,6 +373,9 @@ int lapser_init(int        total_items,
 #endif
 
     ctx->slack = slack;
+    ctx->lookup = lookup;
+    ctx->meta_lookup = meta_lookup;
+
     free(keys_to_produce);
     free(keys_to_consume);
     lapser_log_fprintf("Finished initialization\n");
@@ -372,8 +386,8 @@ int lapser_init(int        total_items,
 int lapser_finish(lapser_ctx *ctx) {
 
     lapser_log_fprintf("Deleting auxiliary data structures\n");
-    free(lookup);
-    free(meta_lookup);
+    free(ctx->lookup); ctx->lookup = NULL;
+    free(ctx->meta_lookup); ctx->meta_lookup = NULL;
 
     wait_for_flush_queue(ctx->control_queue);
     wait_for_flush_queue(ctx->data_queue);

@@ -18,7 +18,7 @@ int lapser_init(int         total_items,
                 Key         keys_to_consume[],
                 size_t      num_keys_to_consume,
                 uint16_t    slack,
-                lapser_ctx *ctx);
+                lapser_ctx  **ctx);
 
 int lapser_set(Key        item_id,
                void *     new_value,

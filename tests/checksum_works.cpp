@@ -46,27 +46,27 @@ class ChecksumTest : public ::testing::Test {
 };
 
 TEST_F(ChecksumTest, SetLocalItem) {
-    item * to_test = lapser_get_item_structure(rank);
+    item * to_test = lapser_get_item_structure(rank, _lapser_global_ctx);
     Byte buf = 'A' + rank;
     ASSERT_EQ(0, lapser_set(rank, &buf, sizeof buf, 1));
     EXPECT_EQ(lapser_item_hash((Byte*) &buf, sizeof buf, to_test->version), to_test->checksum);
 }
 
 TEST_F(ChecksumTest, CorrectInitialization) {
-    item * to_test = lapser_get_item_structure(rank);
+    item * to_test = lapser_get_item_structure(rank, _lapser_global_ctx);
     EXPECT_EQ(lapser_item_hash(to_test->value, sizeof(Byte), to_test->version), to_test->checksum);
 }
 
 TEST_F(ChecksumTest, GetLocalItemWithoutSetting) {
     Byte buf;
-    item * to_test = lapser_get_item_structure(rank);
+    item * to_test = lapser_get_item_structure(rank, _lapser_global_ctx);
     ASSERT_EQ(0, lapser_get(rank, &buf, sizeof buf, 1, 1));
     EXPECT_EQ(lapser_item_hash((Byte*) &buf, sizeof buf, to_test->version), to_test->checksum);
 }
 
 // TODO more granular error codes
 TEST_F(ChecksumTest, GetLocalWithCorruptedHash) {
-    item * to_test = lapser_get_item_structure(rank);
+    item * to_test = lapser_get_item_structure(rank, _lapser_global_ctx);
     Byte buf = 'A' + rank;
     Byte res;
 

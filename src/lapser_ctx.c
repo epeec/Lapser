@@ -23,6 +23,66 @@ static gaspi_return_t lapser_new_ctx(lapser_ctx ** res) {
     return GASPI_SUCCESS;
 }
 
+
+static inline gaspi_return_t find_next_segment_id(gaspi_segment_id_t *r1,
+                                                  gaspi_segment_id_t *r2) {
+
+    bool assigning_second=false;
+    gaspi_segment_id_t res;
+
+    gaspi_number_t num_segs, max_segs;
+    SUCCESS_OR_DIE( gaspi_segment_num(&num_segs) );
+    SUCCESS_OR_DIE( gaspi_segment_max(&max_segs) );
+
+    if(max_segs - num_segs < 2) {
+        lapser_log_fprintf("Could not get enough segments: max %d, allocated %d\n",
+                           max_segs, num_segs);
+        return GASPI_ERROR;
+    }
+
+    gaspi_segment_id_t used_s[num_segs+1];
+    SUCCESS_OR_DIE( gaspi_segment_list(num_segs, used_s) );
+
+
+    res = max_segs;
+    ssize_t j;
+
+
+repeat:
+    // First check active, allocated segments
+    do {
+        res--;
+        j = num_segs;
+        while(j-- && used_s[j] != res) { continue; }
+    } while(j != -1 && res != max_segs);
+
+    // Ok, now res has got a possible segment id
+    // Then, need to check other configured contexts
+    for(size_t i=0; i<LAPSER_MAX_CONCURRENT; ++i) {
+        if(!is_used[i]) continue;
+
+        if(res == _lapser_context_array[i].control_segment ||
+           res == _lapser_context_array[i].data_segment) {
+            goto repeat;
+        }
+    }
+
+    if(res == max_segs) {
+        lapser_log_fprintf("Could not find an unused id for segment\n");
+        return GASPI_ERROR;
+    }
+
+    if(!assigning_second) {
+        *r1 = res;
+        assigning_second = true;
+        goto repeat; //Next one is to r2
+    }
+
+    *r2 = res;
+    return GASPI_SUCCESS;
+}
+
+
 gaspi_return_t lapser_free_ctx(lapser_ctx * ctx) {
 
     ptrdiff_t i = ctx - _lapser_context_array;
@@ -40,25 +100,13 @@ gaspi_return_t lapser_free_ctx(lapser_ctx * ctx) {
 }
 
 
+// Need to get 2 queues, and 2 segment ids
 gaspi_return_t lapser_init_config_ctx(lapser_ctx ** res) {
 
-    // Search for appropriate parameters
 
-    // Find max total of queues and segments
-    gaspi_number_t num_segs, num_queues;
-    gaspi_number_t max_segs, max_queues;
-
-    SUCCESS_OR_DIE( gaspi_segment_num(&num_segs) );
+    gaspi_number_t num_queues, max_queues;
     SUCCESS_OR_DIE( gaspi_queue_num(&num_queues) );
-
-    SUCCESS_OR_DIE( gaspi_segment_max(&max_segs) );
     SUCCESS_OR_DIE( gaspi_queue_max(&max_queues) );
-
-    if(max_segs - num_segs < 2) {
-        lapser_log_fprintf("Could not get enough segments: max %d, allocated %d\n",
-                           max_segs, num_segs);
-        return GASPI_ERROR;
-    }
 
     if(max_queues - num_queues < 2) {
         lapser_log_fprintf("Could not get enough queues: max %d, allocated %d\n",
@@ -66,41 +114,14 @@ gaspi_return_t lapser_init_config_ctx(lapser_ctx ** res) {
         return GASPI_ERROR;
     }
 
-    // Now, get some nice queues and segments, and in descending order
+    // Now, get some nice queues
     gaspi_queue_id_t control_q, data_q;
 
     SUCCESS_OR_DIE( gaspi_queue_create(&control_q, GASPI_BLOCK) );
     SUCCESS_OR_DIE( gaspi_queue_create(&data_q, GASPI_BLOCK) );
 
-
     gaspi_segment_id_t control_s, data_s;
-    gaspi_segment_id_t used_s[num_segs];
-    SUCCESS_OR_DIE( gaspi_segment_list(num_segs, used_s) );
-
-    control_s = max_segs;
-    ssize_t j;
-    do {
-        control_s--;
-        j = num_segs;
-        while(j-- && used_s[j] != control_s) { continue; }
-    } while(j != -1 && control_s != max_segs); // If not 0, then I got
-
-    if(control_s == max_segs) {
-        lapser_log_fprintf("Could not find an unused id for the control segment\n");
-        return GASPI_ERROR;
-    }
-
-    data_s = control_s;
-    do {
-        data_s--;
-        j = num_segs;
-        while(j-- && used_s[j] != data_s) { continue; }
-    } while(j != -1); // If not 0, then I got
-
-    if(data_s == max_segs) {
-        lapser_log_fprintf("Could not find an unused id for the data segment\n");
-        return GASPI_ERROR;
-    }
+    SUCCESS_OR_DIE( find_next_segment_id(&control_s, &data_s) );
 
     // Fill structure and return
     SUCCESS_OR_DIE( lapser_new_ctx(res) );

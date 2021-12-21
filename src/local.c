@@ -12,14 +12,14 @@ int lapser_set(Key        item_id,
 
     // Alternative to this metadata lookup - verify item location;
     // because the produced slots are contiguous and at the beginning
-    item_metadata * meta_write = meta_lookup[item_id];
+    item_metadata * meta_write = ctx->meta_lookup[item_id];
     if(meta_write->producer != _lapser_rank) {
         lapser_log_fprintf("Trying to set item %"PRIu64", when the producer rank is %d\n",
                          item_id, meta_write->producer);
         return -1;
     }
 
-    item * to_write = lookup[item_id];
+    item * to_write = ctx->lookup[item_id];
 
     to_write->version = version;
     to_write->checksum = lapser_item_hash(new_value, value_size, version);
@@ -34,7 +34,7 @@ size_t lapser_get(Key        item_id,
                   Clock      slack,
                   lapser_ctx *ctx) {
 
-    item * to_read = lookup[item_id];
+    item * to_read = ctx->lookup[item_id];
 
     if(base_version > to_read->version + slack) {
         lapser_log_fprintf("Stored clock version on item %"PRIu64" is too old for the get request "
