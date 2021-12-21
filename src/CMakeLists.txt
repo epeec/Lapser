@@ -29,6 +29,36 @@ target_compile_features(lapser PRIVATE c_std_99)
 set_target_properties(lapser PROPERTIES POSITION_INDEPENDENT_CODE ${BUILD_SHARED_LIBS})
 
 
-# TODO verify that the EXPORT stuff is correctly done
-install(TARGETS lapser DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT lapserconfig)
-install(EXPORT lapserconfig FILE lapserconfig.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/lapser)
+# LapserTargets.cmake references this particular build from the build tree
+install(TARGETS lapser
+        EXPORT LapserTargets
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+install(EXPORT LapserTargets
+        FILE LapserTargets.cmake
+        NAMESPACE Lapser::
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/lapser
+)
+
+
+# Now, relocatable Package, to be able to use find_package()
+include(CMakePackageConfigHelpers)
+configure_package_config_file(${PROJECT_SOURCE_DIR}/LapserConfig.cmake.in
+  "${CMAKE_CURRENT_BINARY_DIR}/LapserConfig.cmake"
+  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/lapser
+)
+
+# With versioning
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/LapserConfigVersion.cmake"
+  COMPATIBILITY SameMajorVersion
+)
+
+install(FILES
+          "${CMAKE_CURRENT_BINARY_DIR}/LapserConfig.cmake"
+          "${CMAKE_CURRENT_BINARY_DIR}/LapserConfigVersion.cmake"
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/lapser
+)
