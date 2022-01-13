@@ -54,9 +54,6 @@ TODO
     + Check if checksum is not preferable, may be faster?
     + Check https://github.com/aappleby/smhasher/ and https://github.com/ztanml/fast-hash
 
-  - [ ] Start using git
-  - [ ] Put repository on Fraunhoffer's GitLab?
-
   - Sparser datastructures?
     (right now, we are assuming Key belong in the range [0, total_items[)
     + [ ] metadata lookup
@@ -64,9 +61,9 @@ TODO
     + [ ] consumers offset lookup
     + [ ] Key assignment (possibly already done, but not testable without the others)
 
-  - Allow more than 64 processes
+  - [X] Allow more than 64 processes
     + Actually check that this works up to 64 processes
-    + [ ] Change item_metadata fields - consumers, consumers_offsets
+    + [X] Change item_metadata fields - consumers, consumers_offsets
 
   - Make it thread-safe
     + [ ] Extern variables inside struct
