@@ -15,12 +15,11 @@ This project uses the CMake meta-build system, version 3.10 or above.
 Critical dependencies: GPI-2, C compiler with C99 standard support
 Optional dependencies: ASan & UBSan compiler support, googletest, C++ compiler
 
-
 Please note that the final linking step with GPI-2 should be done with your
 application build step;
 to compile this library, having the GASPI header files is enough.
 
-If you choose to compile Lapser as a shared library (the default option),
+If you choose to compile and install Lapser as a shared library (the default option),
 remember to run `ldconfig` after installing the library, to set up the appropriate
 bindings in your system linker.
 
@@ -44,3 +43,21 @@ After that, you can run the tests from your build directory using:
 
     make check
 
+
+Possible developments
+---------------------
+
+  - Use a sparser datastructure to map the meta_items and items to their segment location
+    (right now it uses an array of pointers indexed by the item id)
+  - Make push less eager to send new versions (it is not considering slack when sending)
+  - Better logging and time measurements
+
+
+Licensing
+---------
+
+All code is under the license in the root LICENSE.md,
+except for code under the src/aux/ folder, which was taken from another project
+that did not include a license, and can be found at the following link:
+
+https://gitlab.itwm.fraunhofer.de/EPEEC/ssp_ps
